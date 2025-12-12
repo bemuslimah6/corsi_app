@@ -140,11 +140,14 @@ def render_identity_form():
 
 # ---------------- QUESTIONNAIRE ----------------
 def render_questionnaire():
-    st.header("Bagian 1 — Kuesioner 18 Item (Likert 1–5)")
+    st.header("Bagian 1 — Kuesioner 18 Item (Likert 1–4)")
+    st.write("""
+   Jawab sesuai dengan kondisi anda, 1= Sangat Tidak Setuju, 2 = Tidak Setuju, 3 = Setuju, 4 = Sangat Setuju
+    """)
     answers = {}
     for i, q in enumerate(QUESTIONS, 1):
         # default selection: 0 (Tidak Pernah) to ensure selection exists
-        answers[f"Q{i}"] = st.radio(f"{i}. {q}", [1, 2, 3, 4, 5], index=0, horizontal=True, key=f"q{i}")
+        answers[f"Q{i}"] = st.radio(f"{i}. {q}", [1, 2, 3, 4], index=0, horizontal=True, key=f"q{i}")
     if st.button("Selesai Kuesioner — Siap ke Tes Corsi"):
         st.session_state.answers = answers
         st.session_state.questionnaire_done = True
@@ -332,5 +335,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

@@ -123,7 +123,7 @@ def render_identity_form():
                 "riwayat_kesehatan": riwayat_kesehatan,
                 "kafein": kafein
             }
-            st.experimental_rerun()
+            st.rerun()
 
     return None
 
@@ -207,7 +207,7 @@ def render_corsi():
             cs["sequence"] = generate_sequence(cs["level"], cs["n_blocks"])
             cs["user_clicks"] = []
             del cs["blink_done"]
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Salah! Tes selesai.")
             cs["results"][f"Level_{cs['level']}"] = 0
@@ -262,10 +262,11 @@ def main():
 
         if response.status_code == 200:
             st.session_state.thankyou = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Gagal mengirim data. Periksa koneksi internet.")
 
 if __name__ == "__main__":
     main()
+
 

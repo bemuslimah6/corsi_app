@@ -32,13 +32,13 @@ QUESTIONS = [
     "Saya merasa sulit berhenti ketika sedang bermain internet."
 ]
 
-# ---------------- HELPERS ----------------
+# ---------------- HELPER TO SEND DATA ----------------
 def send_to_webhook(payload):
     try:
         r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
-        return r.status_code == 200, r.status_code
-    except Exception as e:
-        return False, str(e)
+        return r.status_code == 200
+    except:
+        return False
 
 # ---------------- IDENTITY FORM ----------------
 def render_identity_form():
@@ -52,65 +52,49 @@ def render_identity_form():
     **Dengan melanjutkan, Anda menyetujui penggunaan data untuk penelitian.**
     """)
 
-    st.subheader("Informasi Dasar")
-
     inisial = st.text_input("Inisial (wajib)")
-    umur = st.number_input("Umur", min_value=17, max_value=28, step=1)
+    umur = st.number_input("Umur", 17, 28)
     gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"])
     pendidikan = st.selectbox("Pendidikan", ["Pilih...", "SMA/SMK", "D3", "S1/Sederajat"])
     kota = st.text_input("Domisili (Kota/Kabupaten)")
 
-    st.subheader("Kinerja Memori Kerja")
-
     durasi = st.selectbox("Durasi penggunaan layar per hari",
                           ["Pilih...", "< 1 jam", "1–2 jam", "2–4 jam", "4–6 jam", "> 6 jam"])
 
-    aktivitas = st.selectbox("Aktivitas gawai yang paling sering dilakukan",
+    aktivitas = st.selectbox("Aktivitas gawai utama",
                              ["Pilih...", "Belajar", "Media sosial", "Game", "Menonton video", "Lainnya"])
 
     sebelum_tidur = st.radio("Menggunakan gawai sebelum tidur?", ["Ya", "Tidak"])
 
     kualitas_tidur = st.selectbox("Kualitas tidur", ["Pilih...", "Baik", "Sedang", "Buruk"])
 
-    durasi_tidur = st.selectbox("Durasi tidur per hari", ["Pilih...", "< 5 jam", "5–6 jam", "6–8 jam", "> 8 jam"])
+    durasi_tidur = st.selectbox("Durasi tidur per hari",
+                                ["Pilih...", "< 5 jam", "5–6 jam", "6–8 jam", "> 8 jam"])
 
-    gangguan_fokus = st.selectbox("Riwayat gangguan fokus / kesulitan belajar",
+    gangguan_fokus = st.selectbox("Riwayat gangguan fokus / belajar",
                                   ["Pilih...", "Tidak ada", "ADHD", "Slow learner", "Gangguan bahasa", "Kesulitan pemrosesan pendengaran"])
 
-    riwayat_kesehatan = st.selectbox("Riwayat kesehatan kognitif",
-                                     ["Pilih...", "Tidak ada", "Cedera kepala", "Riwayat kejang", "Menggunakan obat yang mempengaruhi fokus"])
+    riwayat_kognitif = st.selectbox("Riwayat kesehatan kognitif",
+                                    ["Pilih...", "Tidak ada", "Cedera kepala", "Riwayat kejang", "Obat yang mempengaruhi fokus"])
 
-    kafein = st.selectbox("Konsumsi kafein",
-                          ["Pilih...", "Tidak pernah", "1x sehari", "2x sehari", "3x atau lebih"])
+    kafein = st.selectbox("Konsumsi kafein", ["Pilih...", "Tidak pernah", "1x", "2x", "3x+"])
 
     if st.button("Lanjut ke Kuesioner"):
 
-        # VALIDASI
-        if inisial.strip() == "":
-            st.error("Inisial wajib diisi.")
-        elif pendidikan == "Pilih...":
-            st.error("Pendidikan wajib dipilih.")
-        elif kota.strip() == "":
-            st.error("Kota wajib diisi.")
-        elif durasi == "Pilih...":
-            st.error("Durasi layar wajib dipilih.")
-        elif aktivitas == "Pilih...":
-            st.error("Aktivitas gawai wajib dipilih.")
-        elif kualitas_tidur == "Pilih...":
-            st.error("Kualitas tidur wajib dipilih.")
-        elif durasi_tidur == "Pilih...":
-            st.error("Durasi tidur wajib dipilih.")
-        elif gangguan_fokus == "Pilih...":
-            st.error("Riwayat gangguan fokus wajib dipilih.")
-        elif riwayat_kesehatan == "Pilih...":
-            st.error("Riwayat kesehatan wajib dipilih.")
-        elif kafein == "Pilih...":
-            st.error("Kafein wajib dipilih.")
+        missing = (
+            inisial.strip() == "" or pendidikan=="Pilih..." or kota.strip()=="" or
+            durasi=="Pilih..." or aktivitas=="Pilih..." or kualitas_tidur=="Pilih..."
+            or durasi_tidur=="Pilih..." or gangguan_fokus=="Pilih..." or 
+            riwayat_kognitif=="Pilih..." or kafein=="Pilih..."
+        )
+
+        if missing:
+            st.error("Semua field wajib diisi.")
         else:
             st.session_state.identity_completed = True
             st.session_state.identity_data = {
                 "inisial": inisial,
-                "umur": int(umur),
+                "umur": umur,
                 "jenis_kelamin": gender,
                 "pendidikan": pendidikan,
                 "kota": kota,
@@ -119,14 +103,15 @@ def render_identity_form():
                 "sebelum_tidur": sebelum_tidur,
                 "kualitas_tidur": kualitas_tidur,
                 "durasi_tidur": durasi_tidur,
-                "riwayat_gangguan_fokus": gangguan_fokus,
-                "riwayat_kesehatan": riwayat_kesehatan,
+                "gangguan_fokus": gangguan_fokus,
+                "riwayat_kognitif": riwayat_kognitif,
                 "kafein": kafein
             }
             st.rerun()
 
 # ---------------- QUESTIONNAIRE ----------------
 def render_questionnaire():
+
     st.header("Bagian 1 — Kuesioner Internet Addiction Test (IAT)")
 
     st.write("""
@@ -142,10 +127,7 @@ def render_questionnaire():
 
     for i, q in enumerate(QUESTIONS, 1):
         answers[f"Q{i}"] = st.radio(
-            f"**{i}. {q}**",
-            [1, 2, 3, 4],
-            key=f"q{i}",
-            horizontal=True
+            f"**{i}. {q}**", [1, 2, 3, 4], horizontal=True, key=f"q{i}"
         )
 
     if st.button("Selesai → Lanjut Tes Corsi"):
@@ -153,8 +135,8 @@ def render_questionnaire():
         st.session_state.questionnaire_done = True
         st.rerun()
 
-# ---------------- CORSI 4x4 WITH 1-MISTAKE RULE ----------------
-def generate_positions_4x4():
+# ---------------- CORSI 4×4 MOBILE FRIENDLY ----------------
+def generate_positions():
     pos = list(range(1, 17))
     random.shuffle(pos)
     return pos
@@ -166,17 +148,22 @@ def blink(sequence, positions):
     placeholder = st.empty()
     for pid in sequence:
         with placeholder.container():
-            html = "<div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;'>"
+
+            html = "<div style='display:grid;grid-template-columns:repeat(4,65px);gap:10px;justify-content:center;'>"
+
             for b in positions:
                 if b == pid:
-                    html += "<div style='height:70px;background:#2B6CB0;border-radius:10px;'></div>"
+                    html += "<div style='height:65px;background:#2B6CB0;border-radius:10px;'></div>"
                 else:
-                    html += "<div style='height:70px;background:#E2E8F0;border-radius:10px;'></div>"
+                    html += "<div style='height:65px;background:#E2E8F0;border-radius:10px;'></div>"
+
             html += "</div>"
             st.markdown(html, unsafe_allow_html=True)
-        time.sleep(0.6)
+
+        time.sleep(0.55)
         placeholder.empty()
-    time.sleep(0.2)
+
+    time.sleep(0.15)
 
 def render_corsi():
     st.header("🧠 Bagian 2 — Tes Corsi 4×4")
@@ -186,24 +173,24 @@ def render_corsi():
             "level": 1,
             "positions": None,
             "sequence": None,
-            "user_clicks": [],
             "attempt": 1,
+            "user_clicks": [],
             "results": {},
             "status": "idle"
         }
 
     cs = st.session_state.corsi
 
-    # Initialize level
+    # INIT LEVEL
     if cs["positions"] is None:
-        cs["positions"] = generate_positions_4x4()
+        cs["positions"] = generate_positions()
         cs["sequence"] = generate_sequence(cs["level"])
         cs["user_clicks"] = []
         cs["status"] = "idle"
 
-    # Idle state
+    # Idle
     if cs["status"] == "idle":
-        st.info(f"Level {cs['level']} — Panjang urutan: {len(cs['sequence'])}")
+        st.info(f"Level {cs['level']} — panjang urutan: {len(cs['sequence'])}")
         if st.button("Mulai Blink"):
             cs["status"] = "blink"
             st.rerun()
@@ -216,21 +203,51 @@ def render_corsi():
         st.rerun()
         return False
 
-    # Input mode
+    # Input Mode - MOBILE FRIENDLY GRID
     if cs["status"] == "input":
-        st.write("Klik kotak sesuai urutan blink tadi.")
 
-        cols = st.columns(4)
-        for idx, pos in enumerate(cs["positions"]):
-            col = cols[idx % 4]
+        st.write("Klik kotak sesuai urutan blink tadi:")
 
-            is_selected = pos in cs["user_clicks"]
-            color = "#38A169" if is_selected else "#E2E8F0"
+        st.markdown("""
+            <style>
+            .grid{
+                display:grid;
+                grid-template-columns:repeat(4,65px);
+                gap:10px;
+                justify-content:center;
+            }
+            .box{
+                width:65px;height:65px;
+                border-radius:10px;
+                background:#E2E8F0;
+            }
+            .box.selected{
+                background:#38A169 !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
 
-            if col.button(" ", key=f"blk_{pos}_{len(cs['user_clicks'])}"):
-                if pos not in cs["user_clicks"]:
-                    cs["user_clicks"].append(pos)
-                st.rerun()
+        # HTML CLICK GRID
+        html = "<div class='grid'>"
+        for pid in cs["positions"]:
+            selected = "selected" if pid in cs["user_clicks"] else ""
+            html += f"""
+                <div class='box {selected}' onclick="parent.postMessage({{'click': {pid}}}, '*')"></div>
+            """
+        html += "</div>"
+
+        st.markdown(html, unsafe_allow_html=True)
+
+        # Listen to JS → Python
+        msg = st.experimental_get_query_params().get("click", [None])[0]
+
+        if msg and msg != "None":
+            pid = int(msg)
+            if pid not in cs["user_clicks"]:
+                cs["user_clicks"].append(pid)
+
+            st.experimental_set_query_params(click=None)
+            st.rerun()
 
         st.write(f"Klik: {len(cs['user_clicks'])}/{len(cs['sequence'])}")
 
@@ -238,28 +255,27 @@ def render_corsi():
     if len(cs["user_clicks"]) == len(cs["sequence"]):
 
         if cs["user_clicks"] == cs["sequence"]:
-            # SUCCESS
+            # BENAR
             cs["results"][f"Level_{cs['level']}"] = 1
             cs["level"] += 1
-            cs["positions"] = None
             cs["attempt"] = 1
-            st.success("Benar! Naik ke level berikutnya.")
+            cs["positions"] = None
+            st.success("Benar! Naik level.")
             st.rerun()
             return False
 
+        # SALAH
+        if cs["attempt"] == 1:
+            cs["attempt"] = 2
+            cs["user_clicks"] = []
+            st.warning("Salah. Kesempatan 1x lagi.")
+            st.rerun()
+            return False
         else:
-            # WRONG
-            if cs["attempt"] == 1:
-                cs["attempt"] = 2
-                cs["user_clicks"] = []
-                st.warning("Salah. Kesempatan 1x lagi pada level yang sama.")
-                st.rerun()
-                return False
-            else:
-                cs["results"][f"Level_{cs['level']}"] = 0
-                cs["status"] = "finished"
-                st.error("Salah dua kali. Tes selesai.")
-                return True
+            cs["results"][f"Level_{cs['level']}"] = 0
+            cs["status"] = "finished"
+            st.error("Salah dua kali. Tes selesai.")
+            return True
 
     return False
 
@@ -269,50 +285,45 @@ def main():
     st.title("Pengaruh Ketergantungan Internet terhadap Kinerja Memori Kerja")
 
     if st.session_state.get("thankyou", False):
-        st.success("Terima kasih! Data Anda telah direkam.")
+        st.success("Terima kasih! Data telah direkam.")
         return
 
-    # IDENTITAS
     if not st.session_state.get("identity_completed", False):
         render_identity_form()
         return
 
-    # KUESIONER
     if not st.session_state.get("questionnaire_done", False):
         render_questionnaire()
         return
 
-    # CORSI
     is_finished = render_corsi()
 
-    # SUBMIT
     if is_finished:
+
         cs = st.session_state.corsi
 
-        max_level = max([int(k.split("_")[1]) for k, v in cs["results"].items() if v == 1], default=0)
+        max_level = max([int(k.split("_")[1]) for k,v in cs["results"].items() if v==1], default=0)
         total_iat = sum(st.session_state.answers.values())
-        total_corsi_benar = sum(1 for v in cs["results"].values() if v == 1)
-        total_corsi_salah = sum(1 for v in cs["results"].values() if v == 0)
+        total_benar = sum(1 for v in cs["results"].values() if v == 1)
+        total_salah = sum(1 for v in cs["results"].values() if v == 0)
 
         payload = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "total_iat": total_iat,
             "corsi_max_level": max_level,
-            "corsi_total_benar": total_corsi_benar,
-            "corsi_total_salah": total_corsi_salah,
+            "corsi_total_benar": total_benar,
+            "corsi_total_salah": total_salah,
         }
 
         payload.update(st.session_state.identity_data)
         payload.update(st.session_state.answers)
         payload.update(cs["results"])
 
-        ok, info = send_to_webhook(payload)
-        if ok:
+        if send_to_webhook(payload):
             st.session_state.thankyou = True
             st.rerun()
         else:
-            st.error(f"Gagal mengirim data: {info}")
+            st.error("Gagal mengirim data. Periksa koneksi internet.")
 
 if __name__ == "__main__":
     main()
-

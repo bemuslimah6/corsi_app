@@ -6,12 +6,14 @@ from datetime import datetime
 
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxfcOZUB5oUS74pQvoLFOsYD2SWfFwlHhgJkviawY1m56SVthIf1Qszxo4Zb3koCsEe/exec"
 
-st.set_page_config(page_title="Pengaruh Ketergantungan Internet terhadap Kinerja Memori Kerja",
-                   layout="centered")
+st.set_page_config(
+    page_title="Pengaruh Ketergantungan Internet terhadap Kinerja Memori Kerja",
+    layout="centered"
+)
 
-# -----------------------
-# IAT QUESTIONNAIRE
-# -----------------------
+# -------------------------------------------------------------
+# 18 ITEM IAT
+# -------------------------------------------------------------
 QUESTIONS = [
     "Saya bermain internet lebih lama dari yang saya rencanakan.",
     "Saya membentuk pertemanan baru melalui internet.",
@@ -33,12 +35,10 @@ QUESTIONS = [
     "Saya merasa sulit berhenti ketika sedang bermain internet."
 ]
 
-
-# -----------------------
-# HELPERS
-# -----------------------
+# -------------------------------------------------------------
+# HELPER
+# -------------------------------------------------------------
 def send_to_webhook(payload):
-    """Kirim hasil ke Google Sheet."""
     try:
         r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
         return r.status_code == 200, r.status_code
@@ -46,28 +46,25 @@ def send_to_webhook(payload):
         return False, str(e)
 
 
-# -----------------------
-# IDENTITY FORM
-# -----------------------
+# -------------------------------------------------------------
+# FORM IDENTITAS
+# -------------------------------------------------------------
 def render_identity_form():
-
     st.header("Data Responden")
 
     st.write("""
     Terima kasih telah berpartisipasi dalam penelitian ini.  
-    Seluruh data bersifat **rahasia** dan digunakan untuk **kepentingan akademik**.
-
-    **Dengan melanjutkan pengisian, Anda menyetujui penggunaan data ini.**
+    Data Anda bersifat **rahasia** dan hanya digunakan untuk **kepentingan akademik**.
     """)
 
     inisial = st.text_input("Inisial (wajib)")
-    umur = st.number_input("Umur", min_value=17, max_value=28, step=1)
+    umur = st.number_input("Umur", min_value=17, max_value=80, step=1)
     gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"])
     pendidikan = st.selectbox("Pendidikan", ["Pilih...", "SMA/SMK", "D3", "S1/Sederajat"])
     kota = st.text_input("Domisili (Kota/Kabupaten)")
 
     durasi = st.selectbox("Durasi penggunaan layar per hari",
-                          ["Pilih...", "< 1 jam", "1–2 jam", "2–4 jam", "4–6 jam", "> 6 jam"])
+                          ["Pilih...", "<1 jam", "1–2 jam", "2–4 jam", "4–6 jam", ">6 jam"])
 
     aktivitas = st.selectbox("Aktivitas gawai utama",
                              ["Pilih...", "Belajar", "Media sosial", "Game", "Menonton video", "Lainnya"])
@@ -76,8 +73,7 @@ def render_identity_form():
 
     kualitas_tidur = st.selectbox("Kualitas tidur", ["Pilih...", "Baik", "Sedang", "Buruk"])
 
-    durasi_tidur = st.selectbox("Durasi tidur per hari",
-                                ["Pilih...", "< 5 jam", "5–6 jam", "6–8 jam", "> 8 jam"])
+    durasi_tidur = st.selectbox("Durasi tidur", ["Pilih...", "< 5 jam", "5–6 jam", "6–8 jam", "> 8 jam"])
 
     gangguan_fokus = st.selectbox("Riwayat gangguan fokus / kesulitan belajar",
                                   ["Pilih...", "Tidak ada", "ADHD", "Slow learner",
@@ -88,10 +84,9 @@ def render_identity_form():
                                      "Riwayat kejang", "Obat yang mempengaruhi fokus"])
 
     kafein = st.selectbox("Konsumsi kafein",
-                          ["Pilih...", "Tidak pernah", "1x sehari", "2x sehari", "3x atau lebih"])
+                          ["Pilih...", "Tidak pernah", "1x", "2x", "3x atau lebih"])
 
     if st.button("Lanjut ke Kuesioner"):
-        # memastikan semua isi
         required = [
             inisial.strip(),
             kota.strip(),
@@ -106,7 +101,7 @@ def render_identity_form():
         ]
 
         if not all(required):
-            st.error("Semua data wajib diisi.")
+            st.error("Semua field wajib diisi.")
             return
 
         st.session_state.identity_completed = True
@@ -126,28 +121,29 @@ def render_identity_form():
             "riwayat_kognitif": riwayat_kognitif,
             "kafein": kafein
         }
+
         st.rerun()
 
 
-# -----------------------
-# QUESTIONNAIRE
-# -----------------------
+# -------------------------------------------------------------
+# KUESIONER IAT
+# -------------------------------------------------------------
 def render_questionnaire():
 
-    st.header("Bagian 1 — Kuesioner Internet Addiction Test (IAT)")
+    st.header("Bagian 1 — Kuesioner Internet Addiction Test")
 
     st.write("""
-    **Petunjuk pengisian:**  
-    Jawab sesuai kondisi Anda.  
-    - **1** = Sangat Tidak Setuju  
-    - **2** = Tidak Setuju  
-    - **3** = Setuju  
-    - **4** = Sangat Setuju  
+    **Petunjuk:**  
+    Jawab sesuai kondisi Anda  
+    - 1 = Sangat Tidak Setuju  
+    - 2 = Tidak Setuju  
+    - 3 = Setuju  
+    - 4 = Sangat Setuju  
     """)
 
     answers = {}
     for i, q in enumerate(QUESTIONS, 1):
-        answers[f"Q{i}"] = st.radio(f"**{i}. {q}**", [1, 2, 3, 4],
+        answers[f"Q{i}"] = st.radio(f"**{i}. {q}**", [1,2,3,4],
                                    horizontal=True, key=f"q{i}")
 
     if st.button("Selesai → Mulai Tes Corsi"):
@@ -156,20 +152,9 @@ def render_questionnaire():
         st.rerun()
 
 
-# -----------------------
-# CORSI UTILITIES
-# -----------------------
-def generate_positions():
-    pos = list(range(1, 16 + 1))
-    random.shuffle(pos)
-    return pos
-
-
-def generate_sequence(level):
-    length = min(level + 1, 16)
-    return random.sample(range(1, 17), length)
-
-
+# -------------------------------------------------------------
+# BLINK VISUAL
+# -------------------------------------------------------------
 def blink_visual(sequence, positions):
     ph = st.empty()
 
@@ -190,12 +175,11 @@ def blink_visual(sequence, positions):
     time.sleep(0.2)
 
 
-# -----------------------
-# CORSI (WITH RETRY 1X)
-# -----------------------
+# -------------------------------------------------------------
+# TES CORSI (STABIL)
+# -------------------------------------------------------------
 def render_corsi():
-
-    st.header("Bagian 2 — Tes Corsi 4×4")
+    st.header("Bagian 2 — Tes Corsi (4×4)")
 
     if "corsi" not in st.session_state:
         st.session_state.corsi = {
@@ -205,69 +189,78 @@ def render_corsi():
             "user_clicks": [],
             "attempt": 1,
             "results": {},
-            "status": "idle"
+            "status": "idle",
+            "last_clicked": None
         }
 
     cs = st.session_state.corsi
 
+    # INIT
     if cs["positions"] is None:
-        cs["positions"] = generate_positions()
-        cs["sequence"] = generate_sequence(cs["level"])
+        cs["positions"] = list(range(1,17))
+        random.shuffle(cs["positions"])
+        cs["sequence"] = random.sample(range(1,17), min(cs["level"]+1,16))
         cs["user_clicks"] = []
         cs["status"] = "idle"
 
-    # auto start blink
+    # IDLE → BLINK
     if cs["status"] == "idle":
         cs["status"] = "blink"
         st.rerun()
 
-    # blink
+    # BLINK
     if cs["status"] == "blink":
         blink_visual(cs["sequence"], cs["positions"])
         cs["status"] = "input"
-        st.rerun()
+        st.stop()     # <- memastikan blink tampil
 
-    # input mode
+    # INPUT MODE
     if cs["status"] == "input":
-        st.write("Klik kotak sesuai urutan yang berkedip.")
 
+        clicked = st.session_state.get("last_clicked", None)
+
+        if clicked is not None:
+            if clicked not in cs["user_clicks"]:
+                cs["user_clicks"].append(clicked)
+            st.session_state.last_clicked = None
+            st.rerun()
+
+        st.write(f"Klik kotak: **{len(cs['user_clicks'])}/{len(cs['sequence'])}**")
+
+        # CSS GRID
         st.markdown("""
         <style>
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 70px);
-            grid-gap: 10px;
-            justify-content: center;
-        }
-        .box {
-            width: 70px;
-            height: 70px;
-            border-radius: 10px;
-            background: #E2E8F0;
-        }
-        .box-selected {
-            width: 70px;
-            height: 70px;
-            border-radius: 10px;
-            background: #38A169;
-        }
+        .box {width:70px;height:70px;border-radius:10px;background:#E2E8F0;margin:5px;}
+        .box-selected {width:70px;height:70px;border-radius:10px;background:#38A169;margin:5px;}
+        .wrap {display:flex;flex-wrap:wrap;width:320px;margin:auto;justify-content:center;}
         </style>
         """, unsafe_allow_html=True)
 
-        container = st.container()
+        html = "<div class='wrap'>"
 
-        with container:
-            for pid in cs["positions"]:
-                if pid in cs["user_clicks"]:
-                    st.markdown("<div class='box-selected'></div>", unsafe_allow_html=True)
-                else:
-                    if st.button(" ", key=f"btn_{pid}_{len(cs['user_clicks'])}"):
-                        cs["user_clicks"].append(pid)
-                        st.rerun()
+        for pid in cs["positions"]:
+            if pid in cs["user_clicks"]:
+                html += "<div class='box-selected'></div>"
+            else:
+                html += (
+                    f"<form>"
+                    f"<button name='click' value='{pid}' "
+                    f"style='width:70px;height:70px;border:none;border-radius:10px;"
+                    f"background:#E2E8F0;margin:5px;'></button>"
+                    f"</form>"
+                )
+        html += "</div>"
 
-        st.write(f"Klik: **{len(cs['user_clicks'])}/{len(cs['sequence'])}**")
+        st.markdown(html, unsafe_allow_html=True)
 
-    # evaluation
+        # listen click
+        params = st.experimental_get_query_params()
+        if "click" in params:
+            st.session_state.last_clicked = int(params["click"][0])
+            st.experimental_set_query_params()
+            st.rerun()
+
+    # EVALUATE
     if len(cs["user_clicks"]) == len(cs["sequence"]):
 
         if cs["user_clicks"] == cs["sequence"]:
@@ -275,7 +268,7 @@ def render_corsi():
             cs["level"] += 1
             cs["attempt"] = 1
             cs["positions"] = None
-            st.success("Benar! Lanjut ke level berikutnya.")
+            st.success("Benar! Ke level berikutnya.")
             st.rerun()
 
         else:
@@ -283,9 +276,8 @@ def render_corsi():
                 cs["attempt"] = 2
                 cs["user_clicks"] = []
                 cs["status"] = "blink"
-                st.warning("Salah. Anda mendapat 1 kesempatan lagi.")
+                st.warning("Salah. Kesempatan 1x lagi.")
                 st.rerun()
-
             else:
                 cs["results"][f"Level_{cs['level']}"] = 0
                 cs["status"] = "finished"
@@ -295,47 +287,51 @@ def render_corsi():
     return False
 
 
-# -----------------------
+# -------------------------------------------------------------
 # MAIN APP
-# -----------------------
+# -------------------------------------------------------------
 def main():
 
     st.title("Pengaruh Ketergantungan Internet terhadap Kinerja Memori Kerja")
 
+    # Jika sudah submit → halaman terima kasih
     if st.session_state.get("thankyou", False):
-        st.success("Terima kasih! Data berhasil direkam.")
-        st.markdown("Anda dapat menutup halaman ini.")
+        st.success("Terima kasih! Data Anda berhasil direkam.")
+        st.write("Anda dapat menutup halaman ini.")
         return
 
-    # step 1
+    # Step 1
     if not st.session_state.get("identity_completed", False):
         render_identity_form()
         return
 
-    # step 2
+    # Step 2
     if not st.session_state.get("questionnaire_done", False):
         render_questionnaire()
         return
 
-    # step 3 — corsi
+    # Step 3
     finished = render_corsi()
 
     if finished:
 
         cs = st.session_state.corsi
 
-        max_level = max([int(k.split("_")[1]) for k, v in cs["results"].items() if v == 1], default=0)
+        max_level = max(
+            [int(k.split("_")[1]) for k, v in cs["results"].items() if v == 1],
+            default=0
+        )
 
         total_iat = sum(st.session_state.answers.values())
-        total_corsi_benar = sum(1 for v in cs["results"].values() if v == 1)
-        total_corsi_salah = sum(1 for v in cs["results"].values() if v == 0)
+        total_benar = sum(1 for v in cs["results"].values() if v == 1)
+        total_salah = sum(1 for v in cs["results"].values() if v == 0)
 
         payload = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "total_iat": total_iat,
             "corsi_max_level": max_level,
-            "corsi_total_benar": total_corsi_benar,
-            "corsi_total_salah": total_corsi_salah
+            "corsi_total_benar": total_benar,
+            "corsi_total_salah": total_salah
         }
 
         payload.update(st.session_state.identity_data)

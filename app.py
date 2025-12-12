@@ -4,12 +4,9 @@ import requests
 import time
 from datetime import datetime
 
-# ---------------------------------------------------------
-# CONFIG
-# ---------------------------------------------------------
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxfcOZUB5oUS74pQvoLFOsYD2SWfFwlHhgJkviawY1m56SVthIf1Qszxo4Zb3koCsEe/exec"
 
-st.set_page_config(page_title="Kuesioner + Tes Corsi", layout="centered")
+st.set_page_config(page_title="Pengaruh Ketergatungan terhadap Internet pada Kinerja Memori Kerja", layout="centered")
 
 # ---------------------------------------------------------
 # 18 ITEM KUESIONER (IAT Indonesia)
@@ -35,33 +32,28 @@ QUESTIONS = [
     "Saya merasa sulit berhenti ketika sedang bermain internet."
 ]
 
-# ---------------------------------------------------------
-# FORM IDENTITAS RESPONDEN
-# ---------------------------------------------------------
 def render_identity_form():
 
-    st.header("🧍‍♂️ Data Responden")
+    st.header("Data Responden")
 
     st.write("""
-    **Pengantar Penelitian**
-
+    
     Terima kasih telah berpartisipasi dalam penelitian ini.  
-    Aplikasi ini digunakan untuk **kepentingan akademik**, dan seluruh data akan dijaga kerahasiaannya.  
-    Anda dapat menggunakan **inisial**, bukan nama lengkap.
+    Aplikasi ini hanya digunakan untuk **kepentingan akademik**, dan seluruh data akan dijaga kerahasiaannya.  
 
     **Dengan melanjutkan pengisian, Anda menyetujui penggunaan data untuk tujuan penelitian.**
     """)
 
-    st.subheader("🔹 Informasi Dasar")
+    st.subheader("Informasi Dasar")
 
     inisial = st.text_input("Inisial (wajib)")
-    umur = st.number_input("Umur", min_value=5, max_value=80, step=1)
+    umur = st.number_input("Umur", min_value=17, max_value=28, step=1)
     gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"])
-    pendidikan = st.selectbox("Pendidikan Terakhir",
-                              ["Pilih...", "SD", "SMP", "SMA/SMK", "D3", "S1", "S2", "S3"])
-    kota = st.text_input("Domisili (Kota/Kabupaten) — wajib")
+    pendidikan = st.selectbox("Pendidikan",
+                              ["Pilih...", "SMA/SMK", "D3", "S1/Sederajat"])
+    kota = st.text_input("Domisili (Kota/Kabupaten)")
 
-    st.subheader("🔹 Variabel Terkait Kinerja Memori Kerja")
+    st.subheader("Kinerja Memori Kerja")
 
     durasi = st.selectbox("Durasi penggunaan layar per hari",
                           ["Pilih...", "< 1 jam", "1–2 jam", "2–4 jam", "4–6 jam", "> 6 jam"])
@@ -135,12 +127,8 @@ def render_identity_form():
 
     return None
 
-
-# ---------------------------------------------------------
-# RENDER KUESIONER
-# ---------------------------------------------------------
 def render_questionnaire():
-    st.header("📋 Bagian 1 — Kuesioner 18 Item")
+    st.header("Bagian 1 — Kuesioner 18 Item")
 
     answers = {}
 
@@ -149,10 +137,6 @@ def render_questionnaire():
 
     return answers
 
-
-# ---------------------------------------------------------
-# CORSI FUNCTIONS
-# ---------------------------------------------------------
 def generate_grid(n):
     ids = list(range(1, n+1))
     random.shuffle(ids)
@@ -181,9 +165,6 @@ def blink_sequence(blocks, sequence):
         time.sleep(0.7)
         st.empty()
 
-# ---------------------------------------------------------
-# RENDER CORSI
-# ---------------------------------------------------------
 def render_corsi():
     st.header("🧠 Bagian 2 — Tes Corsi Tapping Multi-Level")
 
@@ -235,50 +216,40 @@ def render_corsi():
 
     return False
 
-
-# ---------------------------------------------------------
-# MAIN APP
-# ---------------------------------------------------------
 def main():
 
-    st.title("📝 Kuesioner + Tes Corsi (Indonesia)")
+    st.title("Pengaruh Ketergantungan Internet terhadap Kinerja Memori Kerja")
 
     # Halaman terima kasih otomatis
     if "thankyou" in st.session_state and st.session_state.thankyou:
-        st.success("🎉 Terima kasih! Data Anda telah berhasil direkam.")
+        st.success("Terima kasih! Data Anda telah berhasil direkam.")
         st.markdown("Formulir telah selesai. Anda dapat menutup halaman ini.")
         return
 
     if "identity_completed" not in st.session_state:
         st.session_state.identity_completed = False
 
-    # Identitas dulu jika belum
     if not st.session_state.identity_completed:
         render_identity_form()
         return
 
-    # Ambil data identitas
     identity = st.session_state.identity_data
 
-    # Kuesioner
     answers = render_questionnaire()
 
     st.markdown("---")
 
-    # Corsi
     is_finished = render_corsi()
 
-    # Jika Corsi selesai → auto kirim & auto halaman terima kasih
     if is_finished:
         cs = st.session_state.corsi
         max_level = max([int(k.split("_")[1]) for k, v in cs["results"].items() if v == 1], default=0)
 
-        st.subheader("📊 Hasil Akhir Corsi")
+        st.subheader("Hasil Akhir Corsi")
         for k, v in cs["results"].items():
             st.write(f"{k}: {v}")
         st.write(f"**Level Tertinggi:** {max_level}")
 
-        # Gabungkan semua data
         data = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "max_level": max_level
@@ -287,7 +258,6 @@ def main():
         data.update(answers)
         data.update(cs["results"])
 
-        # Auto kirim tanpa tombol
         response = requests.post(WEBHOOK_URL, json=data)
 
         if response.status_code == 200:
@@ -298,3 +268,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

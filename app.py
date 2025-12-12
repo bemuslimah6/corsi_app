@@ -144,7 +144,7 @@ def render_questionnaire():
     answers = {}
     for i, q in enumerate(QUESTIONS, 1):
         # default selection: 0 (Tidak Pernah) to ensure selection exists
-        answers[f"Q{i}"] = st.radio(f"{i}. {q}", [1, 2, 3, 4, 5], index=null, horizontal=True, key=f"q{i}")
+        answers[f"Q{i}"] = st.radio(f"{i}. {q}", [1, 2, 3, 4, 5], index=0, horizontal=True, key=f"q{i}")
     if st.button("Selesai Kuesioner — Siap ke Tes Corsi"):
         st.session_state.answers = answers
         st.session_state.questionnaire_done = True
@@ -332,4 +332,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

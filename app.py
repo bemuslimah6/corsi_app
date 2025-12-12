@@ -55,7 +55,7 @@ def render_identity_form():
     st.subheader("Informasi Dasar")
 
     inisial = st.text_input("Inisial (wajib)")
-    umur = st.number_input("Umur", min_value=17, max_value=80, step=1)
+    umur = st.number_input("Umur", min_value=17, max_value=28, step=1)
     gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"])
     pendidikan = st.selectbox("Pendidikan", ["Pilih...", "SMA/SMK", "D3", "S1/Sederajat"])
     kota = st.text_input("Domisili (Kota/Kabupaten)")
@@ -315,3 +315,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

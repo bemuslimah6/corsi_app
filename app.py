@@ -12,24 +12,24 @@ st.set_page_config(page_title="Pengaruh Ketergantungan Internet terhadap Kinerja
 # 18 ITEM KUESIONER (IAT Indonesia)
 # ---------------------------------------------------------
 QUESTIONS = [
-    "Saya bermain internet lebih lama dari yang saya rencanakan.",
-    "Saya membentuk pertemanan baru melalui internet.",
-    "Saya merahasiakan aktivitas saya di internet dari orang lain.",
-    "Saya menutupi pikiran yang mengganggu dengan memikirkan hal menyenangkan tentang internet.",
-    "Saya takut hidup tanpa internet akan membosankan atau kosong.",
-    "Saya marah jika ada yang mengganggu saat saya bermain internet.",
-    "Saya terus memikirkan internet ketika tidak sedang bermain.",
-    "Saya lebih memilih internet daripada beraktivitas dengan orang lain.",
-    "Saya merasa gelisah jika tidak bermain internet, dan tenang kembali setelah bermain.",
-    "Saya mengabaikan pekerjaan rumah demi bermain internet.",
-    "Waktu belajar atau nilai akademik saya menurun akibat internet.",
-    "Kinerja saya di sekolah/rumah terganggu karena internet.",
-    "Saya sering kurang tidur karena bermain internet.",
-    "Saya berusaha mengurangi waktu internet tetapi gagal.",
-    "Saya sering berkata 'sebentar lagi' saat bermain internet.",
-    "Saya berusaha menyembunyikan durasi bermain internet.",
-    "Saya mengabaikan kegiatan penting demi internet.",
-    "Saya merasa sulit berhenti ketika sedang bermain internet."
+    "1. Saya bermain internet lebih lama dari yang saya rencanakan.",
+    "2. Saya membentuk pertemanan baru melalui internet.",
+    "3. Saya merahasiakan aktivitas saya di internet dari orang lain.",
+    "4. Saya menutupi pikiran yang mengganggu dengan memikirkan hal menyenangkan tentang internet.",
+    "4. Saya takut hidup tanpa internet akan membosankan atau kosong.",
+    "6. Saya marah jika ada yang mengganggu saat saya bermain internet.",
+    "7. Saya terus memikirkan internet ketika tidak sedang bermain.",
+    "8. Saya lebih memilih internet daripada beraktivitas dengan orang lain.",
+    "9. Saya merasa gelisah jika tidak bermain internet, dan tenang kembali setelah bermain.",
+    "10. Saya mengabaikan pekerjaan rumah demi bermain internet.",
+    "11. Waktu belajar atau nilai akademik saya menurun akibat internet.",
+    "12. Kinerja saya di sekolah/rumah terganggu karena internet.",
+    "13. Saya sering kurang tidur karena bermain internet.",
+    "14. Saya berusaha mengurangi waktu internet tetapi gagal.",
+    "15. Saya sering berkata 'sebentar lagi' saat bermain internet.",
+    "16. Saya berusaha menyembunyikan durasi bermain internet.",
+    "17. Saya mengabaikan kegiatan penting demi internet.",
+    "18. Saya merasa sulit berhenti ketika sedang bermain internet."
 ]
 
 # ---------------- HELPERS ----------------
@@ -142,7 +142,7 @@ def render_identity_form():
 def render_questionnaire():
     st.header("Bagian 1 — Kuesioner 18 Item (Likert 1–4)")
     st.write("""
-   Jawab sesuai dengan kondisi anda, 1= Sangat Tidak Setuju, 2 = Tidak Setuju, 3 = Setuju, 4 = Sangat Setuju
+   Jawab sesuai dengan kondisi anda, 1= Sangat Tidak Setuju , 2 = Tidak Setuju , 3 = Setuju , 4 = Sangat Setuju
     """)
     answers = {}
     for i, q in enumerate(QUESTIONS, 1):
@@ -335,6 +335,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

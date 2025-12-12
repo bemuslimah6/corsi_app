@@ -106,7 +106,8 @@ def render_questionnaire():
     st.header("Bagian 1 — Kuesioner IAT")
 st.write("""
     Mohon isi sesuai dengan kondisi Anda, 1 = Sangat Tidak Setuju , 2 = Tidak Setuju , 3 = Setuju , 4 = Sangat Setuju  
-    """)
+  """)
+
     answers = {}
     for i, q in enumerate(QUESTIONS, 1):
         answers[f"Q{i}"] = st.radio(q, [1,2,3,4], key=f"q{i}", horizontal=True)
@@ -271,4 +272,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

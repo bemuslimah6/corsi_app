@@ -83,9 +83,10 @@ if st.session_state.page == "biodata":
 # =============================
 elif st.session_state.page == "kuesioner":
     st.title("Kuesioner Penggunaan Internet")
-    st.caption("Berikan penilaian terhadap setiap pernyataan berikut dengan memilih angka 1–4.
-
-1 = Sangat Tidak Setuju | 2 = Tidak Setuju | 3 = Setuju | 4 = Sangat Setuju")
+    st.caption(
+        "Berikan penilaian terhadap setiap pernyataan berikut dengan memilih angka 1–4.\n\n"
+        "1 = Sangat Tidak Setuju | 2 = Tidak Setuju | 3 = Setuju | 4 = Sangat Setuju"
+    )
 
     questions = [
         "Saya menggunakan internet lebih lama dari yang saya rencanakan",

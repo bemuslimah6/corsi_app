@@ -13,10 +13,10 @@ st.set_page_config(page_title="Kuesioner & Tes Corsi", layout="centered")
 GAS_URL = "https://script.google.com/macros/s/AKfycbxfcOZUB5oUS74pQvoLFOsYD2SWfFwlHhgJkviawY1m56SVthIf1Qszxo4Zb3koCsEe/exec"
 
 LIKERT_OPTIONS = {
-    1: "Sangat Tidak Sesuai",
-    2: "Tidak Sesuai",
-    3: "Sesuai",
-    4: "Sangat Sesuai"
+    1: "Sangat Tidak Setuju",
+    2: "Tidak Setuju",
+    3: "Setuju",
+    4: "Sangat Setuju"
 }
 
 # =============================
@@ -59,7 +59,18 @@ if st.session_state.page == "biodata":
         st.session_state.responses["durasi_internet"] = st.selectbox("Durasi penggunaan internet/hari", ["<2 jam", "2–4 jam", "4–6 jam", ">6 jam"])
         st.session_state.responses["durasi_tidur"] = st.selectbox("Durasi tidur/hari", ["<5 jam", "5–6 jam", "6–7 jam", ">7 jam"])
         st.session_state.responses["kualitas_tidur"] = st.selectbox("Kualitas tidur", ["Buruk", "Cukup", "Baik"])
-        st.session_state.responses["gangguan_kognitif"] = st.selectbox("Riwayat gangguan kognitif", ["Tidak", "Ya"])
+        st.session_state.responses["gangguan_kognitif"] = st.multiselect(
+            "Riwayat gangguan kognitif (boleh lebih dari satu)",
+            [
+                "Tidak ada",
+                "Gangguan perhatian / konsentrasi",
+                "Gangguan memori",
+                "Kesulitan pemecahan masalah",
+                "Kesulitan bahasa",
+                "Riwayat cedera kepala",
+                "Gangguan neurologis lain"
+            ]
+        )
         st.session_state.responses["kafein"] = st.selectbox("Konsumsi kafein", ["Tidak", "Jarang", "Sering"])
         submitted = st.form_submit_button("Lanjut")
 
@@ -72,7 +83,7 @@ if st.session_state.page == "biodata":
 # =============================
 elif st.session_state.page == "kuesioner":
     st.title("Kuesioner Penggunaan Internet")
-    st.caption("Pilih jawaban yang paling sesuai dengan kondisi Anda")
+    st.caption("Berikan penilaian terhadap setiap pernyataan berikut dengan memilih angka 1–4.\n\n1 = Sangat Tidak Setuju | 2 = Tidak Setuju | 3 = Setuju | 4 = Sangat Setuju")
 
     questions = [
         "Saya menggunakan internet lebih lama dari yang saya rencanakan",
@@ -143,16 +154,23 @@ elif st.session_state.page == "corsi":
         return random.sample(range(GRID_SIZE * GRID_SIZE), level)
 
     # --- Tampilkan sequence ---
-    if st.session_state.show_seq:
+        if st.session_state.show_seq:
         st.session_state.sequence = new_sequence(st.session_state.corsi_level)
         st.session_state.user_input = []
-        st.info(f"Level {st.session_state.corsi_level}")
+        st.info(f"Level {st.session_state.corsi_level} – Perhatikan urutan kotak yang menyala")
 
+        # reset blink
+        for i in range(GRID_SIZE * GRID_SIZE):
+            st.session_state[f"blink_{i}"] = False
+
+        time.sleep(0.8)
         for idx in st.session_state.sequence:
             st.session_state[f"blink_{idx}"] = True
+            st.rerun()
             time.sleep(0.6)
             st.session_state[f"blink_{idx}"] = False
-            time.sleep(0.2)
+            st.rerun()
+            time.sleep(0.25)
 
         st.session_state.show_seq = False
         st.rerun()
@@ -164,7 +182,7 @@ elif st.session_state.page == "corsi":
             i = row * GRID_SIZE + col
             with cols[col]:
                 is_blink = st.session_state.get(f"blink_{i}", False)
-                label = "🟩" if is_blink else "⬜"
+                label = "🟩" if is_blink else "⬛"
 
                 if st.button(label, key=f"btn_{i}"):
                     st.session_state.user_input.append(i)

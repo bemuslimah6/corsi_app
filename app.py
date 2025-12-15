@@ -83,7 +83,9 @@ if st.session_state.page == "biodata":
 # =============================
 elif st.session_state.page == "kuesioner":
     st.title("Kuesioner Penggunaan Internet")
-    st.caption("Berikan penilaian terhadap setiap pernyataan berikut dengan memilih angka 1–4.\n\n1 = Sangat Tidak Setuju | 2 = Tidak Setuju | 3 = Setuju | 4 = Sangat Setuju")
+    st.caption("Berikan penilaian terhadap setiap pernyataan berikut dengan memilih angka 1–4.
+
+1 = Sangat Tidak Setuju | 2 = Tidak Setuju | 3 = Setuju | 4 = Sangat Setuju")
 
     questions = [
         "Saya menggunakan internet lebih lama dari yang saya rencanakan",
@@ -154,12 +156,12 @@ elif st.session_state.page == "corsi":
         return random.sample(range(GRID_SIZE * GRID_SIZE), level)
 
     # --- Tampilkan sequence ---
-        if st.session_state.show_seq:
+            if st.session_state.show_seq:
         st.session_state.sequence = new_sequence(st.session_state.corsi_level)
         st.session_state.user_input = []
         st.info(f"Level {st.session_state.corsi_level} – Perhatikan urutan kotak yang menyala")
 
-        # reset blink
+        # reset semua blink
         for i in range(GRID_SIZE * GRID_SIZE):
             st.session_state[f"blink_{i}"] = False
 

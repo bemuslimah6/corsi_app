@@ -1,375 +1,209 @@
+# app.py
 import streamlit as st
 import random
 import requests
 import time
 from datetime import datetime
 
-# -------------------------------------------------------------
-# KONFIGURASI HALAMAN
-# -------------------------------------------------------------
-st.set_page_config(
-    page_title="Tes Memori Kerja",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="Kuesioner & Tes Corsi", layout="centered")
 
-WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxfcOZUB5oUS74pQvoLFOsYD2SWfFwlHhgJkviawY1m56SVthIf1Qszxo4Zb3koCsEe/exec"
+# =============================
+# CONFIG
+# =============================
+GAS_URL = "https://script.google.com/macros/s/AKfycbxfcOZUB5oUS74pQvoLFOsYD2SWfFwlHhgJkviawY1m56SVthIf1Qszxo4Zb3koCsEe/exec"
 
-# -------------------------------------------------------------
-# CSS CSS FIX (KHUSUS MOBILE AGAR TETAP KOTAK 4x4)
-# -------------------------------------------------------------
-st.markdown("""
-<style>
-    /* 1. Mencegah Padding Halaman terlalu lebar di HP */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 5rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
+LIKERT_OPTIONS = {
+    1: "Sangat Tidak Sesuai",
+    2: "Tidak Sesuai",
+    3: "Sesuai",
+    4: "Sangat Sesuai"
+}
 
-    /* 2. Styling Tombol Corsi (Input User) */
-    div[data-testid="stButton"] button {
-        width: 100%;
-        aspect-ratio: 1 / 1; /* Memaksa tombol jadi persegi */
-        border-radius: 8px;
-        border: 2px solid #CBD5E0;
-        background-color: #E2E8F0;
-        transition: all 0.1s;
-        padding: 0 !important; /* Hilangkan padding teks agar muat di HP */
-    }
-    
-    div[data-testid="stButton"] button:active {
-        background-color: #2B6CB0 !important;
-        transform: scale(0.95);
-    }
+# =============================
+# STATE INIT
+# =============================
+if "page" not in st.session_state:
+    st.session_state.page = "biodata"
 
-    /* 3. MOBILE HACK: Memaksa kolom tetap 4 ke samping (tidak turun ke bawah) */
-    /* Kita targetkan kolom di dalam grid */
-    [data-testid="column"] {
-        width: 25% !important;
-        flex: 1 1 25% !important;
-        min-width: 0 !important; /* Mencegah kolom pecah */
-        padding: 0 2px !important; /* Jarak antar tombol diperkecil */
-    }
-</style>
-""", unsafe_allow_html=True)
+if "responses" not in st.session_state:
+    st.session_state.responses = {}
 
-# -------------------------------------------------------------
-# DATA IAT (18 SOAL)
-# -------------------------------------------------------------
-QUESTIONS = [
-    "Saya bermain internet lebih lama dari yang saya rencanakan.",
-    "Saya membentuk pertemanan baru melalui internet.",
-    "Saya merahasiakan aktivitas saya di internet dari orang lain.",
-    "Saya menutupi pikiran yang mengganggu dengan memikirkan hal menyenangkan tentang internet.",
-    "Saya takut hidup tanpa internet akan membosankan atau kosong.",
-    "Saya marah jika ada yang mengganggu saat saya bermain internet.",
-    "Saya terus memikirkan internet ketika tidak sedang bermain.",
-    "Saya lebih memilih internet daripada beraktivitas dengan orang lain.",
-    "Saya merasa gelisah jika tidak bermain internet, dan tenang kembali setelah bermain.",
-    "Saya mengabaikan pekerjaan rumah demi bermain internet.",
-    "Waktu belajar atau nilai akademik saya menurun akibat internet.",
-    "Kinerja saya di sekolah/rumah terganggu karena internet.",
-    "Saya sering kurang tidur karena bermain internet.",
-    "Saya berusaha mengurangi waktu internet tetapi gagal.",
-    "Saya sering berkata 'sebentar lagi' saat bermain internet.",
-    "Saya berusaha menyembunyikan durasi bermain internet.",
-    "Saya mengabaikan kegiatan penting demi internet.",
-    "Saya merasa sulit berhenti ketika sedang bermain internet."
-]
+if "corsi_level" not in st.session_state:
+    st.session_state.corsi_level = 2
+    st.session_state.corsi_fail = False
+    st.session_state.corsi_score = []
+    st.session_state.sequence = []
+    st.session_state.user_input = []
+    st.session_state.show_seq = True
 
-# -------------------------------------------------------------
-# FUNGSI BANTUAN
-# -------------------------------------------------------------
-def send_to_webhook(payload):
+# =============================
+# UTIL
+# =============================
+def send_to_sheet(data):
     try:
-        r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
-        return r.status_code == 200, r.status_code
-    except Exception as e:
-        return False, str(e)
+        requests.post(GAS_URL, json=data, timeout=5)
+    except:
+        pass
 
-# -------------------------------------------------------------
-# HALAMAN 1: IDENTITAS
-# -------------------------------------------------------------
-def render_identity_form():
-    st.title("Studi Memori & Internet")
-    st.info("Data Anda dijamin kerahasiaannya untuk keperluan akademik.")
+# =============================
+# PAGE 1 – BIODATA
+# =============================
+if st.session_state.page == "biodata":
+    st.title("Data Responden")
 
-    with st.form("identity_form"):
-        # Layout Vertikal agar aman dari CSS Hack mobile
-        inisial = st.text_input("Inisial Nama (Wajib)")
-        umur = st.number_input("Umur", min_value=12, max_value=28, step=1)
-        gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"], horizontal=True)
-        kota = st.text_input("Domisili (Kota/Kabupaten)")
-        pendidikan = st.selectbox("Pendidikan Terakhir/Sedang Ditempuh", ["Pilih...", "SMP", "SMA/SMK", "D3", "S1", "S2/Lainnya"])
-        
-        st.markdown("---")
-        st.write("**Kebiasaan Digital**")
-        durasi = st.selectbox("Rata-rata penggunaan layar (HP/Laptop) per hari", 
-                              ["Pilih...", "<1 jam", "1–2 jam", "2–4 jam", "4–6 jam", ">6 jam"])
-        aktivitas = st.selectbox("Aktivitas paling sering dilakukan", 
-                                 ["Pilih...", "Belajar/Kerja", "Media Sosial (TikTok/IG/dll)", "Game Online", "Streaming Video/Film", "Lainnya"])
-        sebelum_tidur = st.radio("Apakah bermain HP sebelum tidur?", ["Ya", "Tidak"], horizontal=True)
-        
-        st.markdown("---")
-        st.write("**Kondisi Kesehatan**")
-        kualitas_tidur = st.selectbox("Bagaimana kualitas tidur Anda?", ["Pilih...", "Sangat Baik", "Cukup", "Buruk"])
-        durasi_tidur = st.selectbox("Rata-rata durasi tidur malam", ["Pilih...", "< 5 jam", "5–6 jam", "6–8 jam", "> 8 jam"])
-        gangguan_fokus = st.selectbox("Riwayat kesulitan fokus / belajar", 
-                                      ["Pilih...", "Tidak ada", "ADHD/ADD", "Slow learner", "Lainnya"])
-        kafein = st.selectbox("Konsumsi Kopi/Kafein hari ini?", ["Pilih...", "Tidak minum", "1 gelas", "2 gelas", "3 gelas atau lebih"])
+    with st.form("biodata"):
+        st.session_state.responses["inisial"] = st.text_input("Inisial")
+        st.session_state.responses["usia"] = st.number_input("Usia", 18, 28)
+        st.session_state.responses["pekerjaan"] = st.selectbox("Pekerjaan", ["Siswa", "Mahasiswa", "Pekerja"])
+        st.session_state.responses["asal"] = st.text_input("Asal Kota/Kabupaten")
+        st.session_state.responses["durasi_internet"] = st.selectbox("Durasi penggunaan internet/hari", ["<2 jam", "2–4 jam", "4–6 jam", ">6 jam"])
+        st.session_state.responses["durasi_tidur"] = st.selectbox("Durasi tidur/hari", ["<5 jam", "5–6 jam", "6–7 jam", ">7 jam"])
+        st.session_state.responses["kualitas_tidur"] = st.selectbox("Kualitas tidur", ["Buruk", "Cukup", "Baik"])
+        st.session_state.responses["gangguan_kognitif"] = st.selectbox("Riwayat gangguan kognitif", ["Tidak", "Ya"])
+        st.session_state.responses["kafein"] = st.selectbox("Konsumsi kafein", ["Tidak", "Jarang", "Sering"])
+        submitted = st.form_submit_button("Lanjut")
 
-        if st.form_submit_button("Lanjut ke Kuesioner", type="primary"):
-            # Validasi sederhana
-            if inisial.strip() == "" or kota.strip() == "" or pendidikan == "Pilih...":
-                st.error("Mohon lengkapi Inisial, Domisili, dan Pendidikan.")
-            else:
-                st.session_state.identity_data = {
-                    "inisial": inisial, "umur": int(umur), "jenis_kelamin": gender,
-                    "pendidikan": pendidikan, "kota": kota, "durasi_layar": durasi,
-                    "aktivitas_gawai": aktivitas, "sebelum_tidur": sebelum_tidur,
-                    "kualitas_tidur": kualitas_tidur, "durasi_tidur": durasi_tidur,
-                    "riwayat_gangguan_fokus": gangguan_fokus, "kafein": kafein
-                }
-                st.session_state.identity_completed = True
-                st.rerun()
-
-# -------------------------------------------------------------
-# HALAMAN 2: KUESIONER
-# -------------------------------------------------------------
-def render_questionnaire():
-    st.header("Bagian 1: Kuesioner")
-    st.caption("Pilihlah skala 1 (Sangat Tidak Setuju) sampai 4 (Sangat Setuju).")
-
-    answers = {}
-    for i, q in enumerate(QUESTIONS, 1):
-        st.write(f"**{i}. {q}**")
-        # Menggunakan key unik untuk setiap radio button
-        answers[f"Q{i}"] = st.radio(
-            f"Jawaban no {i}", 
-            [1, 2, 3, 4], 
-            horizontal=True, 
-            label_visibility="collapsed", 
-            key=f"q_iat_{i}"
-        )
-        st.write("") # Spacer
-
-    if st.button("Simpan & Lanjut ke Tes Memori", type="primary"):
-        st.session_state.answers = answers
-        st.session_state.questionnaire_done = True
+    if submitted:
+        st.session_state.page = "kuesioner"
         st.rerun()
 
-# -------------------------------------------------------------
-# FUNGSI VISUALISASI BLINK (RESPONSIF MOBILE)
-# -------------------------------------------------------------
-def blink_visual(sequence):
-    placeholder = st.empty()
-    
-    # CSS Grid Layout untuk Visual Blink (Menggunakan fr unit agar responsif di HP)
-    grid_style = """
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 5px;
-    width: 100%;
-    max-width: 350px;
-    margin: 0 auto;
-    aspect-ratio: 1/1;
-    """
-    
-    # Fungsi helper untuk render kotak
-    def render_grid(active_idx=None):
-        html = f"<div style='{grid_style}'>"
-        for i in range(1, 17):
-            color = "#2B6CB0" if i == active_idx else "#E2E8F0"
-            # Efek menyala
-            style_extra = "box-shadow: 0 0 10px #3182CE; transform: scale(1.02);" if i == active_idx else ""
-            
-            html += f"""
-            <div style="
-                background-color: {color};
-                border-radius: 6px;
-                width: 100%;
-                padding-top: 100%; /* Trick aspect ratio 1:1 murni CSS */
-                position: relative;
-                transition: background-color 0.1s;
-                {style_extra}
-            "></div>
-            """
-        html += "</div>"
-        return html
+# =============================
+# PAGE 2 – KUESIONER IAT (18 ITEM)
+# =============================
+elif st.session_state.page == "kuesioner":
+    st.title("Kuesioner Penggunaan Internet")
+    st.caption("Pilih jawaban yang paling sesuai dengan kondisi Anda")
 
-    # 1. Tampilkan Grid Kosong
-    with placeholder.container():
-        st.markdown("<h4 style='text-align: center;'>Hafalkan Urutan!</h4>", unsafe_allow_html=True)
-        st.markdown(render_grid(None), unsafe_allow_html=True)
-    
-    time.sleep(1.0) # Jeda persiapan
+    questions = [
+        "Saya menggunakan internet lebih lama dari yang saya rencanakan",
+        "Saya mengabaikan tugas rumah karena internet",
+        "Saya lebih memilih internet daripada kebersamaan dengan orang terdekat",
+        "Saya membentuk pertemanan baru melalui internet",
+        "Prestasi akademik/kerja saya menurun karena internet",
+        "Saya terus memikirkan internet saat tidak menggunakannya",
+        "Saya merasa hidup membosankan tanpa internet",
+        "Saya menjadi mudah marah jika diganggu saat online",
+        "Saya menutup-nutupi aktivitas internet saya",
+        "Saya menggunakan internet untuk menutupi pikiran yang tidak menyenangkan",
+        "Saya merencanakan kapan akan online lagi",
+        "Saya kehilangan waktu tidur karena internet",
+        "Saya gagal mengurangi durasi penggunaan internet",
+        "Saya mengatakan 'sebentar lagi' saat online",
+        "Saya memilih internet dibanding aktivitas sosial",
+        "Saya merasa gelisah jika tidak bisa internet",
+        "Saya sulit mengontrol penggunaan internet",
+        "Saya menggunakan internet secara berlebihan"
+    ]
 
-    # 2. Loop Animasi
-    for target in sequence:
-        # NYALA
-        with placeholder.container():
-            st.markdown("<h4 style='text-align: center;'>Hafalkan Urutan!</h4>", unsafe_allow_html=True)
-            st.markdown(render_grid(target), unsafe_allow_html=True)
-        time.sleep(0.7) # Durasi nyala
-        
-        # MATI SEJENAK (Penting untuk angka kembar)
-        with placeholder.container():
-            st.markdown("<h4 style='text-align: center;'>Hafalkan Urutan!</h4>", unsafe_allow_html=True)
-            st.markdown(render_grid(None), unsafe_allow_html=True)
-        time.sleep(0.2)
+    total = 0
+    for i, q in enumerate(questions):
+        ans = st.radio(q, options=list(LIKERT_OPTIONS.keys()), format_func=lambda x: LIKERT_OPTIONS[x], key=f"q{i}")
+        total += ans
+        st.session_state.responses[f"iat_{i+1}"] = ans
 
-    # Biarkan placeholder terakhir (kosong) tetap ada agar tidak flicker saat transisi ke input
+    if st.button("Lanjut ke Tes Corsi"):
+        st.session_state.responses["total_iat"] = total
+        st.session_state.page = "corsi"
+        st.rerun()
 
-# -------------------------------------------------------------
-# HALAMAN 3: LOGIKA UTAMA CORSI
-# -------------------------------------------------------------
-def render_corsi():
-    st.header("Bagian 2: Tes Memori")
+# =============================
+# PAGE 3 – TES CORSI (MOBILE OPTIMIZED)
+# =============================
+elif st.session_state.page == "corsi":
+    st.title("Tes Corsi Block Tapping")
+    st.caption("Perhatikan urutan kotak yang menyala, lalu ulangi dengan mengetuk kotak yang sama")
 
-    if "corsi" not in st.session_state:
-        st.session_state.corsi = {
-            "level": 1,
-            "sequence": [],
-            "user_clicks": [],
-            "attempt": 1,
-            "results": {},
-            "status": "init"
+    GRID_SIZE = 4
+
+    # --- CSS agar 4x4 tetap konsisten di mobile ---
+    st.markdown(
+        """
+        <style>
+        div[data-testid="column"] {
+            padding: 2px !important;
         }
-
-    cs = st.session_state.corsi
-
-    # --- PHASE 1: INITIALIZE SOAL ---
-    if cs["status"] == "init":
-        seq_len = cs["level"] + 1
-        cs["sequence"] = random.sample(range(1, 17), min(seq_len, 16))
-        cs["user_clicks"] = []
-        cs["status"] = "ready"
-        st.rerun()
-
-    # --- PHASE 2: TOMBOL MULAI (PENTING AGAR TIDAK ERROR DI HP) ---
-    if cs["status"] == "ready":
-        st.info(f"Level {cs['level']} — Percobaan {cs['attempt']}")
-        st.write("Tekan tombol di bawah untuk memulai urutan.")
-        
-        col_center = st.columns([1, 2, 1])
-        with col_center[1]:
-            if st.button(f"▶️ Mulai Level {cs['level']}", use_container_width=True, type="primary"):
-                cs["status"] = "blink"
-                st.rerun()
-
-    # --- PHASE 3: ANIMASI ---
-    if cs["status"] == "blink":
-        blink_visual(cs["sequence"])
-        cs["status"] = "input"
-        st.rerun()
-
-    # --- PHASE 4: INPUT USER ---
-    if cs["status"] == "input":
-        st.write(f"Level: **{cs['level']}** | Klik sesuai urutan tadi:")
-        
-        # CONTAINER GRID INPUT
-        # Kita pakai container biasa, tapi CSS global di atas sudah memaksa kolom jadi 25% width
-        with st.container():
-            for row in range(4):
-                cols = st.columns(4) # Ini akan dipaksa CSS menjadi sejajar di HP
-                for col_idx in range(4):
-                    block_id = (row * 4) + col_idx + 1
-                    
-                    # Key unik agar state tombol terjaga
-                    btn_key = f"btn_{cs['level']}_{cs['attempt']}_{block_id}_{len(cs['user_clicks'])}"
-                    
-                    # Tombol kosong (hanya kotak)
-                    if cols[col_idx].button(" ", key=btn_key):
-                        cs["user_clicks"].append(block_id)
-                        st.rerun()
-
-        # LOGIKA PENILAIAN (REALTIME)
-        if len(cs["user_clicks"]) == len(cs["sequence"]):
-            if cs["user_clicks"] == cs["sequence"]:
-                # BENAR
-                st.success("✅ Benar!")
-                time.sleep(0.5)
-                cs["results"][f"Level_{cs['level']}"] = 1
-                cs["level"] += 1
-                cs["attempt"] = 1
-                cs["status"] = "init"
-                st.rerun()
-            else:
-                # SALAH
-                if cs["attempt"] == 1:
-                    st.warning("❌ Salah urutan. Coba sekali lagi.")
-                    time.sleep(1.5)
-                    cs["attempt"] = 2
-                    cs["user_clicks"] = []
-                    cs["status"] = "ready" # Kembali ke tombol start
-                    st.rerun()
-                else:
-                    # GAME OVER
-                    st.error("❌ Salah kedua kali. Tes Selesai.")
-                    cs["results"][f"Level_{cs['level']}"] = 0
-                    cs["status"] = "finished"
-                    time.sleep(2)
-                    return True # Return True = Selesai
-
-    return False
-
-# -------------------------------------------------------------
-# MAIN APP FLOW
-# -------------------------------------------------------------
-def main():
-    # SCREEN 4: TERIMA KASIH
-    if st.session_state.get("thankyou", False):
-        st.balloons()
-        st.success("Terima kasih! Data berhasil disimpan.")
-        st.write("Anda dapat menutup halaman ini.")
-        if st.button("Kembali ke Awal (Reset)"):
-            st.session_state.clear()
-            st.rerun()
-        return
-
-    # SCREEN 1: IDENTITAS
-    if not st.session_state.get("identity_completed", False):
-        render_identity_form()
-        return
-
-    # SCREEN 2: KUESIONER
-    if not st.session_state.get("questionnaire_done", False):
-        render_questionnaire()
-        return
-
-    # SCREEN 3: CORSI TEST
-    finished = render_corsi()
-
-    # SCREEN 4: SUBMIT DATA
-    if finished:
-        cs = st.session_state.corsi
-        
-        # Hitung skor
-        passed_levels = [int(k.split("_")[1]) for k, v in cs["results"].items() if v == 1]
-        max_level = max(passed_levels) if passed_levels else 0
-        total_iat = sum(st.session_state.answers.values())
-        
-        # Siapkan Payload JSON
-        payload = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "total_iat": total_iat,
-            "corsi_max_level": max_level,
-            "raw_results": str(cs["results"])
+        button[kind="secondary"] {
+            width: 70px !important;
+            height: 70px !important;
+            border-radius: 10px !important;
+            font-size: 0px !important;
         }
-        payload.update(st.session_state.identity_data)
-        payload.update(st.session_state.answers)
+        @media (max-width: 600px) {
+            button[kind="secondary"] {
+                width: 55px !important;
+                height: 55px !important;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-        with st.spinner("Sedang mengirim data..."):
-            ok, info = send_to_webhook(payload)
+    def new_sequence(level):
+        return random.sample(range(GRID_SIZE * GRID_SIZE), level)
 
-        if ok:
-            st.session_state.thankyou = True
-            st.rerun()
+    # --- Tampilkan sequence ---
+    if st.session_state.show_seq:
+        st.session_state.sequence = new_sequence(st.session_state.corsi_level)
+        st.session_state.user_input = []
+        st.info(f"Level {st.session_state.corsi_level}")
+
+        for idx in st.session_state.sequence:
+            st.session_state[f"blink_{idx}"] = True
+            time.sleep(0.6)
+            st.session_state[f"blink_{idx}"] = False
+            time.sleep(0.2)
+
+        st.session_state.show_seq = False
+        st.rerun()
+
+    # --- Grid 4x4 ---
+    for row in range(GRID_SIZE):
+        cols = st.columns(GRID_SIZE)
+        for col in range(GRID_SIZE):
+            i = row * GRID_SIZE + col
+            with cols[col]:
+                is_blink = st.session_state.get(f"blink_{i}", False)
+                label = "🟩" if is_blink else "⬜"
+
+                if st.button(label, key=f"btn_{i}"):
+                    st.session_state.user_input.append(i)
+                    st.session_state[f"blink_{i}"] = True
+                    time.sleep(0.15)
+                    st.session_state[f"blink_{i}"] = False
+
+    # --- Evaluasi jawaban ---
+    if len(st.session_state.user_input) == len(st.session_state.sequence):
+        if st.session_state.user_input == st.session_state.sequence:
+            st.session_state.corsi_score.append(1)
+            st.session_state.corsi_level += 1
+            st.session_state.corsi_fail = False
+            st.success("Benar ✔️ Lanjut level berikutnya")
+            time.sleep(0.6)
+            st.session_state.show_seq = True
         else:
-            st.error(f"Gagal koneksi server: {info}. Mohon screenshot hasil ini.")
-            st.json(payload) # Tampilkan data jika error agar bisa dicatat manual
+            if st.session_state.corsi_fail:
+                st.session_state.corsi_score.append(0)
+                st.error("Salah ❌ Tes selesai")
+                time.sleep(0.8)
+                st.session_state.page = "end"
+            else:
+                st.warning("Salah ❗ Coba ulang level ini")
+                st.session_state.corsi_fail = True
+                time.sleep(0.6)
+                st.session_state.show_seq = True
+        st.rerun()
 
-if __name__ == "__main__":
-    main()
+# =============================
+# END PAGE
+# =============================
+elif st.session_state.page == "end":
+    st.title("Tes Selesai")
+
+    total_corsi = sum(st.session_state.corsi_score)
+    st.session_state.responses["total_corsi"] = total_corsi
+    st.session_state.responses["timestamp"] = datetime.now().isoformat()
+
+    send_to_sheet(st.session_state.responses)
+
+    st.success("Terima kasih. Data Anda telah tersimpan.")

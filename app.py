@@ -12,12 +12,11 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# CSS STYLING (FIX: KOTAK PRESISI & UKURAN TOMBOL)
+# CSS STYLING (FIX: Menghilangkan transform dan scale untuk stabilitas layout)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* 1. KOTAK JAWABAN (Tombol Biasa/Secondary) 
-       Ini dipaksa menjadi KOTAK (Persegi) 1:1 */
+    /* 1. KOTAK JAWABAN (Tombol Biasa/Secondary) */
     div.stButton > button {
         width: 100%;
         aspect-ratio: 1 / 1; 
@@ -26,44 +25,46 @@ st.markdown("""
         background-color: #EDF2F7;
         padding: 0;
         transition: all 0.1s;
+        /* Hapus semua transformasi untuk mencegah layout shift saat klik */
+        transform: none !important; 
     }
     
     /* Efek Hover di Kotak Jawaban */
     div.stButton > button:hover {
         border-color: #3182CE;
         background-color: #EBF8FF;
-        transform: scale(0.98);
+        transform: none; /* Penting: cegah scale/transform */
     }
 
-    /* Efek Klik Manual (Saat ditekan) */
+    /* FEEDBACK HIJAU INSTAN TANPA LAYOUT SHIFT (saat tombol ditekan) */
     div.stButton > button:active {
-        background-color: #48BB78 !important;
+        background-color: #48BB78 !important; /* Hijau saat ditekan */
         color: white;
+        box-shadow: 0 0 10px rgba(72, 187, 120, 0.5);
     }
 
-    /* 2. TOMBOL NAVIGASI (Mulai, Lanjut, dll)
-       Tombol dengan type="primary" ukurannya DIKEMBALIKAN NORMAL (Persegi Panjang)
-       supaya tidak jadi kotak raksasa. */
+    /* 2. TOMBOL NAVIGASI (Mulai, Lanjut, dll) */
     div.stButton > button[kind="primary"] {
-        aspect-ratio: unset !important; /* Batalkan rasio 1:1 */
-        width: auto !important;         /* Lebar menyesuaikan teks */
+        aspect-ratio: unset !important;
+        width: auto !important;
         min-width: 120px;
         padding: 0.5rem 1rem;
-        background-color: #FF4B4B;      /* Warna Merah Streamlit */
+        background-color: #FF4B4B;
         border: none;
         color: white;
+        transform: none; /* Penting: cegah scale/transform */
     }
     
     div.stButton > button[kind="primary"]:hover {
         background-color: #FF2B2B;
-        transform: none; /* Jangan mengecil saat hover */
+        transform: none;
     }
 
     /* 3. GRID HTML MANUAL (Untuk Fase Soal/Blink) */
     .corsi-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 1rem; /* Jarak antar kotak disamakan dengan st.columns */
+        gap: 1rem;
         width: 100%;
     }
     .corsi-box {
@@ -79,8 +80,7 @@ st.markdown("""
         border-color: #2B6CB0;
         box-shadow: 0 0 15px rgba(49, 130, 206, 0.5);
     }
-
-    /* Warna Hijau (Feedback Klik User) */
+    /* Warna Hijau (Feedback Klik User - Hanya digunakan jika mau feedback lama) */
     .corsi-active-green {
         background: #48BB78 !important;
         border-color: #2F855A;
@@ -90,7 +90,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# DATA & HELPERS
+# DATA & HELPERS (TIDAK BERUBAH)
 # ---------------------------------------------------------
 QUESTIONS = [
     "Saya bermain internet lebih lama dari yang saya rencanakan.",
@@ -129,9 +129,6 @@ def generate_sequence(level):
     return random.sample(range(1, 17), level + 1)
 
 def render_grid_html(positions, active=None, color_mode="blue"):
-    """
-    Render grid visual (HTML) untuk soal atau feedback.
-    """
     html = '<div class="corsi-grid">'
     for p in positions:
         extra_class = ""
@@ -142,24 +139,18 @@ def render_grid_html(positions, active=None, color_mode="blue"):
     st.markdown(html, unsafe_allow_html=True)
 
 def blink_sequence(sequence, positions, container):
-    """
-    Menjalankan animasi kedip di dalam container tertentu.
-    """
-    # Tampilan awal (Mati)
     with container:
         render_grid_html(positions, active=None)
     time.sleep(1)
 
     for pid in sequence:
-        # NYALA (Biru)
         with container:
             render_grid_html(positions, active=pid, color_mode="blue")
-        time.sleep(0.7) # Durasi nyala
+        time.sleep(0.7)
         
-        # MATI
         with container:
             render_grid_html(positions, active=None)
-        time.sleep(0.3) # Jeda antar kotak
+        time.sleep(0.3)
 
 # ---------------------------------------------------------
 # HALAMAN 1: IDENTITAS
@@ -181,7 +172,6 @@ def render_identity_form():
     kesehatan = st.selectbox("Riwayat kesehatan kognitif", ["Pilih...", "Tidak ada", "Cedera kepala", "Riwayat kejang", "Obat fokus"])
     kafein = st.selectbox("Konsumsi kafein", ["Pilih...", "Tidak pernah", "1x sehari", "2x sehari", "3x atau lebih"])
 
-    # GUNAKAN TYPE="PRIMARY" AGAR TOMBOL TETAP PERSEGI PANJANG (NORMAL)
     if st.button("Lanjut ke Kuesioner", type="primary"):
         if inisial.strip() == "" or pendidikan == "Pilih..." or kota.strip() == "":
             st.error("Lengkapi semua data wajib.")
@@ -205,14 +195,13 @@ def render_questionnaire():
     for i, q in enumerate(QUESTIONS, 1):
         answers[f"Q{i}"] = st.radio(f"{i}. {q}", [1, 2, 3, 4], horizontal=True, key=f"q{i}")
 
-    # GUNAKAN TYPE="PRIMARY"
     if st.button("Selesai → Tes Corsi", type="primary"):
         st.session_state.answers = answers
         st.session_state.questionnaire_done = True
         st.rerun()
 
 # ---------------------------------------------------------
-# HALAMAN 3: TES CORSI (INTI LOGIKA)
+# HALAMAN 3: TES CORSI
 # ---------------------------------------------------------
 def render_corsi():
     st.header("🧠 Bagian 2 — Tes Corsi")
@@ -224,14 +213,12 @@ def render_corsi():
         }
     cs = st.session_state.corsi
 
-    # Setup Level Baru
     if cs["positions"] is None:
         cs["positions"] = generate_positions()
         cs["sequence"] = generate_sequence(cs["level"])
         cs["user_clicks"] = []
         cs["status"] = "idle"
 
-    # LAYOUT: Gunakan kolom tengah agar game tidak melebar
     col_left, col_game, col_right = st.columns([1, 3, 1])
 
     with col_game:
@@ -240,64 +227,52 @@ def render_corsi():
             st.info(f"Level {cs['level']} | Ingat {len(cs['sequence'])} kotak")
             render_grid_html(cs["positions"], active=None)
             
-            # Tombol Mulai (Primary = Persegi Panjang)
             if st.button("Mulai Level Ini", type="primary", use_container_width=True):
                 cs["status"] = "blink"
                 st.rerun()
-            return False # RETURN PENTING: Stop render apapun di bawah ini
+            return False
 
         # 2. FASE SOAL (BLINK)
         if cs["status"] == "blink":
-            # Placeholder untuk animasi
             grid_placeholder = st.empty()
             blink_sequence(cs["sequence"], cs["positions"], grid_placeholder)
             
-            # Setelah animasi selesai, pindah status
             cs["status"] = "input"
             st.rerun()
-            return False # RETURN PENTING: Jangan render tombol input dulu
+            return False
 
         # 3. FASE JAWABAN (INPUT)
         if cs["status"] == "input":
             st.write("👉 Klik sesuai urutan:")
             
-            # Placeholder agar kita bisa menimpa grid tombol dengan grid visual (feedback)
+            # Placeholder untuk menahan ruang agar tidak membesar saat tombol diklik
             input_placeholder = st.empty()
             
             clicked_pos = None
             
             with input_placeholder.container():
-                # --- FIX GRID 4x4 (Menggunakan Nested Loop) ---
-                # Jangan pakai cols = st.columns(4) di luar loop!
+                # Render Grid 4x4 Tombol
                 for row in range(4):
-                    row_cols = st.columns(4) # Bikin kolom baru tiap baris
+                    row_cols = st.columns(4)
                     for col in range(4):
-                        # Hitung index 0 sampai 15
                         idx = row * 4 + col
                         pos_val = cs["positions"][idx]
                         
                         # Tombol Grid (Default/Secondary = KOTAK)
-                        # Key unik: btn_posisi_jumlahklik
                         if row_cols[col].button(" ", key=f"btn_{pos_val}_{len(cs['user_clicks'])}"):
                             clicked_pos = pos_val
 
-            # --- LOGIKA KLIK & FEEDBACK HIJAU ---
+            # --- LOGIKA KLIK ---
             if clicked_pos is not None:
-                # 1. Timpa seluruh input container dengan gambar grid HIJAU di posisi yg diklik
-                with input_placeholder:
-                    render_grid_html(cs["positions"], active=clicked_pos, color_mode="green")
-                
-                # 2. Jeda sebentar supaya mata user lihat hijaunya
-                time.sleep(0.25)
-                
-                # 3. Simpan & Reload
+                # *FEEDBACK HIJAU SUDAH DIKENDALIKAN OLEH CSS :active (saat menekan)*
+                # Kita tidak perlu lagi time.sleep(0.25) karena efek feedback instan.
+                # Langsung simpan dan reload
                 cs["user_clicks"].append(clicked_pos)
                 st.rerun()
 
-            # --- CEK JAWABAN SETELAH RELOAD ---
+            # --- CEK JAWABAN ---
             if len(cs["user_clicks"]) == len(cs["sequence"]):
                 if cs["user_clicks"] == cs["sequence"]:
-                    # BENAR
                     cs["results"][f"Level_{cs['level']}"] = 1
                     cs["level"] += 1
                     cs["positions"] = None
@@ -306,13 +281,12 @@ def render_corsi():
                     time.sleep(0.8)
                     st.rerun()
                 else:
-                    # SALAH
                     if cs["attempt"] == 1:
                         cs["attempt"] = 2
                         cs["user_clicks"] = []
                         st.warning("Salah urutan. Coba lagi.")
                         time.sleep(1.5)
-                        cs["status"] = "blink" # Ulangi soal
+                        cs["status"] = "blink"
                         st.rerun()
                     else:
                         cs["results"][f"Level_{cs['level']}"] = 0
@@ -347,7 +321,7 @@ def main():
 
     if finished:
         cs = st.session_state.corsi
-        # Hitung skor
+        
         passed = [int(k.split("_")[1]) for k, v in cs["results"].items() if v == 1]
         max_lvl = max(passed) if passed else 0
 

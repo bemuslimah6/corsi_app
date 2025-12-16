@@ -1,144 +1,325 @@
-# app.py
-# Aplikasi Streamlit: Data Responden + Kuesioner IAT (Likert 1-4) + Corsi Block Tapping
-# Dibuat ringkas & modular untuk pemula
-
 import streamlit as st
 import random
 import requests
 import time
+from datetime import datetime
 
-st.set_page_config(page_title="Kuesioner & Tes Corsi", layout="centered")
+# GANTI dengan webhook Apps Script kamu jika perlu
+WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxfcOZUB5oUS74pQvoLFOsYD2SWfFwlHhgJkviawY1m56SVthIf1Qszxo4Zb3koCsEe/exec"
 
-# =============================
-# KONFIGURASI
-# =============================
-GAS_URL = "https://script.google.com/macros/s/AKfycbxfcOZUB5oUS74pQvoLFOsYD2SWfFwlHhgJkviawY1m56SVthIf1Qszxo4Zb3koCsEe/exec"
-GRID_SIZE = 4
-MAX_LEVEL = 9
+st.set_page_config(page_title="Pengaruh Ketergantungan Internet terhadap Kinerja Memori Kerja", layout="centered")
 
-# =============================
-# STATE
-# =============================
-if "page" not in st.session_state:
-    st.session_state.page = 1
+# ----------------------------
+# 18 Item Kuesioner (IAT)
+# ----------------------------
+QUESTIONS = [
+    "Saya bermain internet lebih lama dari yang saya rencanakan.",
+    "Saya membentuk pertemanan baru melalui internet.",
+    "Saya merahasiakan aktivitas saya di internet dari orang lain.",
+    "Saya menutupi pikiran yang mengganggu dengan memikirkan hal menyenangkan tentang internet.",
+    "Saya takut hidup tanpa internet akan membosankan atau kosong.",
+    "Saya marah jika ada yang mengganggu saat saya bermain internet.",
+    "Saya terus memikirkan internet ketika tidak sedang bermain.",
+    "Saya lebih memilih internet daripada beraktivitas dengan orang lain.",
+    "Saya merasa gelisah jika tidak bermain internet, dan tenang kembali setelah bermain.",
+    "Saya mengabaikan pekerjaan rumah demi bermain internet.",
+    "Waktu belajar atau nilai akademik saya menurun akibat internet.",
+    "Kinerja saya di sekolah/rumah terganggu karena internet.",
+    "Saya sering kurang tidur karena bermain internet.",
+    "Saya berusaha mengurangi waktu internet tetapi gagal.",
+    "Saya sering berkata 'sebentar lagi' saat bermain internet.",
+    "Saya berusaha menyembunyikan durasi bermain internet.",
+    "Saya mengabaikan kegiatan penting demi internet.",
+    "Saya merasa sulit berhenti ketika sedang bermain internet."
+]
 
-if "responses" not in st.session_state:
-    st.session_state.responses = {}
-
-if "corsi_level" not in st.session_state:
-    st.session_state.corsi_level = 2
-    st.session_state.corsi_fail = False
-    st.session_state.sequence = []
-    st.session_state.user_input = []
-    st.session_state.corsi_score = []
-
-# =============================
-# HELPER
-# =============================
-def send_to_sheet(payload):
+# ----------------------------
+# Helpers
+# ----------------------------
+def send_to_webhook(payload):
     try:
-        requests.post(GAS_URL, json=payload, timeout=5)
-    except:
-        pass
+        r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        return r.status_code == 200, r.status_code
+    except Exception as e:
+        return False, str(e)
 
-# =============================
-# HALAMAN 1 – DATA RESPONDEN
-# =============================
-if st.session_state.page == 1:
-    st.title("Data Responden")
+# ----------------------------
+# Identity form
+# ----------------------------
+def render_identity_form():
+    st.header("Data Responden")
+    st.write("""
+    Terima kasih telah berpartisipasi dalam penelitian ini.  
+    Aplikasi ini digunakan untuk **kepentingan akademik**, dan seluruh data dijaga kerahasiaannya.
 
-    st.session_state.responses.update({
-        "inisial": st.text_input("Inisial"),
-        "usia": st.number_input("Usia (18–28)", 18, 28),
-        "pekerjaan": st.selectbox("Pekerjaan", ["Mahasiswa", "Pekerja", "Siswa"]),
-        "asal": st.text_input("Asal Kota/Kabupaten"),
-        "durasi_internet": st.selectbox("Durasi penggunaan internet / hari", ["<2 jam", "2–4 jam", "4–6 jam", ">6 jam"]),
-        "durasi_tidur": st.selectbox("Durasi tidur / hari", ["<5 jam", "5–6 jam", "6–7 jam", ">7 jam"]),
-        "kualitas_tidur": st.selectbox("Kualitas tidur", ["Baik", "Cukup", "Buruk"]),
-        "gangguan_kognitif": st.selectbox("Riwayat gangguan kognitif", ["Tidak", "Ada"]),
-        "kafein": st.selectbox("Konsumsi kafein", ["Tidak", "Kadang", "Sering"])
-    })
+    **Dengan melanjutkan, Anda menyetujui penggunaan data untuk penelitian.**
+    """)
+
+    inisial = st.text_input("Inisial (wajib)")
+    umur = st.number_input("Umur", min_value=17, max_value=80, step=1)
+    gender = st.radio("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+    pendidikan = st.selectbox("Pendidikan", ["Pilih...", "SMA/SMK", "D3", "S1/Sederajat"])
+    kota = st.text_input("Domisili (Kota/Kabupaten)")
+
+    durasi = st.selectbox("Durasi penggunaan layar per hari",
+                          ["Pilih...", "< 1 jam", "1–2 jam", "2–4 jam", "4–6 jam", "> 6 jam"])
+
+    aktivitas = st.selectbox("Aktivitas gawai utama",
+                             ["Pilih...", "Belajar", "Media sosial", "Game", "Menonton video", "Lainnya"])
+
+    sebelum_tidur = st.radio("Menggunakan gawai sebelum tidur?", ["Ya", "Tidak"])
+
+    kualitas_tidur = st.selectbox("Kualitas tidur", ["Pilih...", "Baik", "Sedang", "Buruk"])
+
+    durasi_tidur = st.selectbox("Durasi tidur per hari", ["Pilih...", "< 5 jam", "5–6 jam", "6–8 jam", "> 8 jam"])
+
+    gangguan_fokus = st.selectbox("Riwayat gangguan fokus / kesulitan belajar",
+                                  ["Pilih...", "Tidak ada", "ADHD", "Slow learner", "Gangguan bahasa", "Kesulitan pendengaran"])
+
+    riwayat_kognitif = st.selectbox("Riwayat kesehatan kognitif",
+                                    ["Pilih...", "Tidak ada", "Cedera kepala", "Riwayat kejang", "Obat yang mempengaruhi fokus"])
+
+    kafein = st.selectbox("Konsumsi kafein", ["Pilih...", "Tidak pernah", "1x sehari", "2x sehari", "3x atau lebih"])
 
     if st.button("Lanjut ke Kuesioner"):
-        st.session_state.page = 2
+        # simple validation
+        if inisial.strip() == "" or pendidikan == "Pilih..." or kota.strip() == "" or durasi == "Pilih..." \
+           or aktivitas == "Pilih..." or kualitas_tidur == "Pilih..." or durasi_tidur == "Pilih..." \
+           or gangguan_fokus == "Pilih..." or riwayat_kognitif == "Pilih..." or kafein == "Pilih...":
+            st.error("Semua field wajib diisi.")
+            return
+        st.session_state.identity_completed = True
+        st.session_state.identity_data = {
+            "inisial": inisial,
+            "umur": int(umur),
+            "jenis_kelamin": gender,
+            "pendidikan": pendidikan,
+            "kota": kota,
+            "durasi_layar": durasi,
+            "aktivitas_gawai": aktivitas,
+            "sebelum_tidur": sebelum_tidur,
+            "kualitas_tidur": kualitas_tidur,
+            "durasi_tidur": durasi_tidur,
+            "gangguan_fokus": gangguan_fokus,
+            "riwayat_kognitif": riwayat_kognitif,
+            "kafein": kafein
+        }
+        st.rerun()
 
-# =============================
-# HALAMAN 2 – KUESIONER IAT
-# =============================
-elif st.session_state.page == 2:
-    st.title("Kuesioner Penggunaan Internet")
-    st.write("**Petunjuk:** Pilih jawaban yang paling sesuai dengan kondisi Anda")
-    st.write("1 = Tidak Pernah | 2 = Jarang | 3 = Sering | 4 = Selalu")
+# ----------------------------
+# Questionnaire
+# ----------------------------
+def render_questionnaire():
+    st.header("Bagian 1 — Kuesioner Internet Addiction Test (IAT)")
 
-    items = [
-        "Saya menggunakan internet lebih lama dari yang saya rencanakan",
-        "Saya mengabaikan kewajiban karena internet",
-        "Saya lebih memilih internet daripada berinteraksi langsung",
-        "Saya sulit menghentikan penggunaan internet",
-        "Saya merasa gelisah jika tidak menggunakan internet",
-        "Penggunaan internet mengganggu produktivitas saya",
-        "Saya memikirkan internet meskipun sedang tidak menggunakannya",
-        "Saya menggunakan internet untuk melarikan diri dari masalah",
-        "Saya mencoba mengurangi penggunaan internet namun gagal",
-        "Saya merasa waktu berlalu sangat cepat saat online",
-        "Saya mengorbankan waktu tidur demi internet",
-        "Saya menyembunyikan durasi penggunaan internet saya",
-        "Saya merasa hidup membosankan tanpa internet",
-        "Saya menjadi mudah marah saat terganggu ketika online",
-        "Saya memilih internet dibanding kegiatan sosial",
-        "Saya mengatakan \"sebentar lagi\" saat diminta berhenti",
-        "Saya menggunakan internet untuk memperbaiki suasana hati",
-        "Saya kesulitan mengontrol penggunaan internet"
-    ]
+    st.write("""
+    **Petunjuk:**  
+    Jawablah sesuai kondisi Anda.  
+    - 1 = Sangat Tidak Setuju  
+    - 2 = Tidak Setuju  
+    - 3 = Setuju  
+    - 4 = Sangat Setuju  
+    """)
 
-    total = 0
-    for i, q in enumerate(items):
-        val = st.radio(q, [1, 2, 3, 4], horizontal=True, key=f"q{i}")
-        total += val
-        st.session_state.responses[f"IAT_{i+1}"] = val
+    answers = {}
+    for i, q in enumerate(QUESTIONS, 1):
+        answers[f"Q{i}"] = st.radio(f"**{i}. {q}**", [1,2,3,4], horizontal=True, key=f"q{i}")
 
-    st.session_state.responses["total_iat"] = total
+    if st.button("Selesai → Lanjut Tes Corsi"):
+        st.session_state.answers = answers
+        st.session_state.questionnaire_done = True
+        st.rerun()
 
-    if st.button("Lanjut ke Tes Corsi"):
-        send_to_sheet(st.session_state.responses)
-        st.session_state.page = 3
+# ----------------------------
+# Corsi utilities
+# ----------------------------
+def generate_positions():
+    pos = list(range(1,17))
+    random.shuffle(pos)
+    return pos
 
-# =============================
-# HALAMAN 3 – TES CORSI
-# =============================
-elif st.session_state.page == 3:
-    st.title("Tes Corsi Block Tapping")
+def generate_sequence(level):
+    length = min(level + 1, 16)  # cap at 16
+    return random.sample(range(1,17), length)
 
-    if not st.session_state.sequence:
-        st.session_state.sequence = random.sample(range(GRID_SIZE**2), st.session_state.corsi_level)
-        st.session_state.user_input = []
+def blink_visual(sequence, positions):
+    ph = st.empty()
+    for target in sequence:
+        with ph.container():
+            html = "<div style='display:grid;grid-template-columns:repeat(4,65px);gap:8px;justify-content:center;'>"
+            for p in positions:
+                if p == target:
+                    html += "<div style='height:65px;background:#2B6CB0;border-radius:10px;'></div>"
+                else:
+                    html += "<div style='height:65px;background:#E2E8F0;border-radius:10px;'></div>"
+            html += "</div>"
+            st.markdown(html, unsafe_allow_html=True)
+        time.sleep(0.55)
+        ph.empty()
+    time.sleep(0.15)
 
-        for idx in st.session_state.sequence:
-            r, c = divmod(idx, GRID_SIZE)
-            st.session_state[f"blink_{idx}"] = True
-            time.sleep(0.6)
-            st.session_state[f"blink_{idx}"] = False
+# ----------------------------
+# Corsi render (with retry-once logic)
+# ----------------------------
+def render_corsi():
+    st.header("Bagian 2 — Tes Corsi 4×4")
 
-    cols = st.columns(GRID_SIZE)
-    for i in range(GRID_SIZE**2):
-        col = cols[i % GRID_SIZE]
-        color = "🟩" if st.session_state.get(f"clicked_{i}") else "⬜"
-        if col.button(color, key=f"btn_{i}"):
-            st.session_state.user_input.append(i)
-            st.session_state[f"clicked_{i}"] = True
+    # initialize session state for corsi
+    if "corsi" not in st.session_state:
+        st.session_state.corsi = {
+            "level": 1,
+            "positions": None,
+            "sequence": None,
+            "user_clicks": [],
+            "attempt": 1,     # 1 = first try, 2 = second try
+            "results": {},
+            "status": "idle"
+        }
 
-    if len(st.session_state.user_input) == len(st.session_state.sequence):
-        if st.session_state.user_input == st.session_state.sequence:
-            st.session_state.corsi_score.append(1)
-            st.session_state.corsi_level += 1
-            st.session_state.sequence = []
-        else:
-            if st.session_state.corsi_fail:
-                st.session_state.corsi_score.append(0)
-                st.session_state.responses["total_corsi"] = sum(st.session_state.corsi_score)
-                send_to_sheet(st.session_state.responses)
-                st.success("Tes selesai. Terima kasih")
-                st.stop()
+    cs = st.session_state.corsi
+
+    # init current level positions/sequence
+    if cs["positions"] is None:
+        cs["positions"] = generate_positions()
+        cs["sequence"] = generate_sequence(cs["level"])
+        cs["user_clicks"] = []
+        cs["status"] = "idle"
+
+    # idle: show info and auto-start blink (no extra buttons)
+    if cs["status"] == "idle":
+        st.info(f"Level {cs['level']} — panjang urutan: {len(cs['sequence'])}")
+        # automatically move to blink so fewer taps
+        cs["status"] = "blink"
+        st.rerun()
+        return False
+
+    # blink
+    if cs["status"] == "blink":
+        blink_visual(cs["sequence"], cs["positions"])
+        cs["status"] = "input"
+        st.rerun()
+        return False
+
+    # input mode: render 4x4 grid of boxes. Use st.button for unselected boxes, static green div for selected
+    if cs["status"] == "input":
+        st.write("Klik kotak sesuai urutan blink tadi.")
+
+        # global CSS to make buttons square-ish and small
+        st.markdown("""
+            <style>
+            .stButton>button {
+                width:65px !important;
+                height:65px !important;
+                padding:0 !important;
+                border-radius:10px !important;
+            }
+            .selected-box {
+                width:65px;height:65px;border-radius:10px;background:#38A169;display:inline-block;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        cols = st.columns(4)
+        for idx, pid in enumerate(cs["positions"]):
+            col = cols[idx % 4]
+            if pid in cs["user_clicks"]:
+                # show green static box (already clicked)
+                col.markdown("<div class='selected-box'></div>", unsafe_allow_html=True)
             else:
-                st.session_state.corsi_fail = True
-                st.session_state.sequence = []
+                # clickable empty button
+                if col.button("", key=f"btn_{pid}_{len(cs['user_clicks'])}", help=f"Klik kotak {idx+1}"):
+                    cs["user_clicks"].append(pid)
+                    st.rerun()
+
+        st.write(f"Klik: {len(cs['user_clicks'])}/{len(cs['sequence'])}")
+
+    # evaluate when enough clicks collected
+    if len(cs["user_clicks"]) == len(cs["sequence"]):
+        # compare sequences
+        # note: cs["sequence"] and cs["user_clicks"] are both lists of position-ids (1..16)
+        if cs["user_clicks"] == cs["sequence"]:
+            # correct -> mark result and advance level
+            cs["results"][f"Level_{cs['level']}"] = 1
+            cs["level"] += 1
+            cs["attempt"] = 1
+            cs["positions"] = None  # will re-init for next level
+            st.success("Benar — lanjut ke level berikutnya.")
+            st.rerun()
+            return False
+        else:
+            # wrong
+            if cs["attempt"] == 1:
+                cs["attempt"] = 2
+                cs["user_clicks"] = []
+                # keep same positions and sequence, but replay blink
+                st.warning("Salah. Anda mendapat 1 kesempatan lagi untuk level ini.")
+                cs["status"] = "blink"
+                st.rerun()
+                return False
+            else:
+                # second wrong -> stop test
+                cs["results"][f"Level_{cs['level']}"] = 0
+                cs["status"] = "finished"
+                st.error("Salah dua kali — Tes selesai.")
+                return True
+
+    return False
+
+# ----------------------------
+# Main
+# ----------------------------
+def main():
+    st.title("Pengaruh Ketergantungan Internet terhadap Kinerja Memori Kerja")
+
+    # thank you page if already submitted
+    if st.session_state.get("thankyou", False):
+        st.success("Terima kasih! Data Anda telah direkam.")
+        st.markdown("Silakan tutup halaman ini.")
+        return
+
+    # identity step
+    if not st.session_state.get("identity_completed", False):
+        render_identity_form()
+        return
+
+    # questionnaire step
+    if not st.session_state.get("questionnaire_done", False):
+        render_questionnaire()
+        return
+
+    # corsi step
+    finished = render_corsi()
+
+    # if finished -> assemble payload and send
+    if finished:
+        cs = st.session_state.corsi
+
+        max_level = max([int(k.split("_")[1]) for k,v in cs["results"].items() if v == 1], default=0)
+        total_iat = sum(st.session_state.answers.values()) if "answers" in st.session_state else None
+        total_corsi_benar = sum(1 for v in cs["results"].values() if v == 1)
+        total_corsi_salah = sum(1 for v in cs["results"].values() if v == 0)
+
+        payload = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_iat": total_iat,
+            "corsi_max_level": max_level,
+            "corsi_total_benar": total_corsi_benar,
+            "corsi_total_salah": total_corsi_salah
+        }
+
+        # add identity, answers, level results
+        if "identity_data" in st.session_state:
+            payload.update(st.session_state.identity_data)
+        if "answers" in st.session_state:
+            payload.update(st.session_state.answers)
+        payload.update(cs["results"])
+
+        ok, info = send_to_webhook(payload)
+        if ok:
+            st.session_state.thankyou = True
+            st.rerun()
+        else:
+            st.error(f"Gagal mengirim data: {info}. Simpan sementara dan coba lagi.")
+
+if __name__ == "__main__":
+    main()

@@ -12,45 +12,58 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# CSS STYLING (PERBAIKAN TAMPILAN)
+# CSS STYLING (PERBAIKAN TAMPILAN PRESISI)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* Membuat tombol di dalam kolom (grid corsi) menjadi persegi */
-    div[data-testid="stHorizontalBlock"] button {
+    /* Styling Tombol Streamlit agar menjadi kotak sempurna */
+    div.stButton > button {
+        width: 100%;
         aspect-ratio: 1 / 1;
-        width: 100% !important;
-        border-radius: 10px;
-        border: 2px solid #E2E8F0;
-        background-color: #F7FAFC;
-        transition: all 0.2s;
+        border-radius: 8px;
+        border: 2px solid #CBD5E0;
+        background-color: #EDF2F7;
+        transition: all 0.1s;
     }
     
-    /* Efek hover agar lebih interaktif */
-    div[data-testid="stHorizontalBlock"] button:hover {
-        background-color: #BEE3F8;
+    div.stButton > button:hover {
         border-color: #3182CE;
-        transform: scale(0.98);
+        background-color: #EBF8FF;
     }
 
-    /* Grid HTML manual (untuk fase blink) */
+    div.stButton > button:active {
+        background-color: #48BB78 !important; /* Hijau saat ditekan manual */
+        color: white;
+    }
+
+    /* Grid HTML Manual (Untuk fase Blink Soal) */
     .corsi-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 1rem; /* Jarak antar kotak disamakan dengan st.columns */
-        max-width: 100%;
-        margin: auto;
+        gap: 0.8rem; /* Gap disesuaikan agar mirip st.columns */
+        width: 100%;
     }
     .corsi-box {
         aspect-ratio: 1 / 1;
-        border-radius: 10px;
-        background: #F7FAFC; /* Warna default (mati) */
-        border: 2px solid #E2E8F0;
+        border-radius: 8px;
+        background: #EDF2F7;
+        border: 2px solid #CBD5E0;
     }
-    .corsi-active {
-        background: #3182CE !important; /* Warna saat menyala (Biru) */
-        box-shadow: 0 0 15px rgba(49, 130, 206, 0.6);
-        transform: scale(1.05);
+    
+    /* Warna Biru (Soal) */
+    .corsi-active-blue {
+        background: #3182CE !important;
+        border-color: #2B6CB0;
+        box-shadow: 0 0 10px rgba(49, 130, 206, 0.5);
+        transform: scale(0.98);
+    }
+
+    /* Warna Hijau (Feedback Klik User) */
+    .corsi-active-green {
+        background: #48BB78 !important;
+        border-color: #2F855A;
+        box-shadow: 0 0 10px rgba(72, 187, 120, 0.5);
+        transform: scale(0.95);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -174,42 +187,44 @@ def generate_positions():
 def generate_sequence(level):
     return random.sample(range(1, 17), level + 1)
 
-def render_grid_html(positions, active=None):
+def render_grid_html(positions, active=None, color_mode="blue"):
     """
-    Fungsi ini merender grid menggunakan HTML murni untuk fase 'Blink'.
+    Render grid menggunakan HTML.
+    active: ID kotak yang sedang menyala.
+    color_mode: 'blue' untuk soal, 'green' untuk feedback klik user.
     """
     html = '<div class="corsi-grid">'
     for p in positions:
-        # Jika posisi p sama dengan yang aktif, beri kelas 'corsi-active'
-        active_class = "corsi-active" if p == active else ""
-        html += f'<div class="corsi-box {active_class}"></div>'
+        extra_class = ""
+        if p == active:
+            if color_mode == "green":
+                extra_class = "corsi-active-green"
+            else:
+                extra_class = "corsi-active-blue"
+        
+        html += f'<div class="corsi-box {extra_class}"></div>'
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-def blink_sequence(sequence, positions):
+def blink_sequence(sequence, positions, container):
     """
-    Menampilkan urutan nyala.
-    PERBAIKAN: Tidak menggunakan st.empty() untuk menghindari layout shift.
-    Melainkan menimpa konten dengan layout 'mati' saat jeda.
+    Menampilkan urutan blink di dalam container tertentu.
     """
-    grid_placeholder = st.empty()
-    
-    # Tampilkan grid mati dulu sebentar
-    with grid_placeholder:
+    # Tampilan awal mati
+    with container:
         render_grid_html(positions, active=None)
     time.sleep(1)
 
     for pid in sequence:
-        # 1. NYALA (Render dengan active=pid)
-        with grid_placeholder:
-            render_grid_html(positions, active=pid)
-        time.sleep(0.7) # Durasi nyala
+        # NYALA
+        with container:
+            render_grid_html(positions, active=pid, color_mode="blue")
+        time.sleep(0.7) # Lama nyala
         
-        # 2. MATI (Render dengan active=None)
-        # Jangan gunakan placeholder.empty(), tapi render grid mati agar layout tetap diam
-        with grid_placeholder:
+        # MATI
+        with container:
             render_grid_html(positions, active=None)
-        time.sleep(0.3) # Durasi jeda antar blok
+        time.sleep(0.3) # Jeda antar blink
 
 # ---------------------------------------------------------
 # CORSI TEST
@@ -230,74 +245,107 @@ def render_corsi():
 
     cs = st.session_state.corsi
 
-    # Setup awal level baru
     if cs["positions"] is None:
         cs["positions"] = generate_positions()
         cs["sequence"] = generate_sequence(cs["level"])
         cs["user_clicks"] = []
         cs["status"] = "idle"
 
-    # --- STATE: IDLE (Persiapan) ---
-    if cs["status"] == "idle":
-        st.info(f"Level {cs['level']} | Panjang Urutan: {len(cs['sequence'])}")
-        st.write("Perhatikan urutan kotak yang menyala biru.")
-        
-        # Tampilkan grid statis sebagai preview
-        render_grid_html(cs["positions"], active=None)
-        
-        if st.button("Mulai Level Ini", type="primary"):
-            cs["status"] = "blink"
+    # --- LAYOUT CENTERING ---
+    # Kita pakai 3 kolom: [Kiri kosong, TENGAH ISI GAME, Kanan kosong]
+    # Rasio [1, 2, 1] membuat area game tidak terlalu lebar
+    col_left, col_game, col_right = st.columns([1, 2, 1])
+
+    with col_game:
+        # --- STATE: IDLE (Persiapan) ---
+        if cs["status"] == "idle":
+            st.info(f"Level {cs['level']} | Panjang Urutan: {len(cs['sequence'])}")
+            render_grid_html(cs["positions"], active=None)
+            
+            if st.button("Mulai Level Ini", type="primary", use_container_width=True):
+                cs["status"] = "blink"
+                st.rerun()
+            return False
+
+        # --- STATE: BLINK (Menampilkan Urutan) ---
+        if cs["status"] == "blink":
+            # Placeholder agar animasi berjalan mulus di tempat yang sama
+            grid_placeholder = st.empty()
+            blink_sequence(cs["sequence"], cs["positions"], grid_placeholder)
+            cs["status"] = "input"
             st.rerun()
-        return False
+            return False
 
-    # --- STATE: BLINK (Menampilkan Urutan) ---
-    if cs["status"] == "blink":
-        # Jalankan animasi blink
-        blink_sequence(cs["sequence"], cs["positions"])
-        # Setelah selesai, pindah ke input
-        cs["status"] = "input"
-        st.rerun()
-        return False
+        # --- STATE: INPUT (User Menjawab) ---
+        if cs["status"] == "input":
+            st.write("👉 Klik sesuai urutan:")
+            
+            # Placeholder ini penting untuk efek BLINK HIJAU (feedback)
+            # Sebelum tombol dirender ulang, kita akan 'menimpa' area ini dengan gambar grid hijau
+            game_placeholder = st.empty()
 
-    # --- STATE: INPUT (User Menjawab) ---
-    if cs["status"] == "input":
-        st.write("👉 **Klik kotak sesuai urutan yang tadi menyala:**")
+            with game_placeholder:
+                # Kita render tombol di dalam placeholder
+                # Menggunakan st.columns(4) agar grid tombol 4x4
+                # Karena ini ada di dalam 'col_game' (yang sudah dipersempit),
+                # maka ukurannya akan pas dengan grid HTML di atas.
+                rows = [st.columns(4) for _ in range(4)]
+                
+                # Mapping posisi 1-16 ke grid 4x4
+                # positions diacak, tapi kita urutkan tampilannya berdasarkan index list
+                # agar layout tetap rapi, tapi logic tombolnya benar.
+                
+                # Logic: Kita iterasi tombol berdasarkan urutan grid visual (kiri-kanan, atas-bawah)
+                # Tapi ID tombolnya diambil dari cs["positions"]
+                
+                clicked_pos = None
 
-        # Buat Grid Input menggunakan st.columns
-        # CSS di atas sudah memaksa tombol di sini menjadi kotak (persegi)
-        cols = st.columns(4)
-        for i, pos in enumerate(cs["positions"]):
-            # Tombol diberi label kosong " "
-            # Key harus unik setiap klik agar state terdeteksi
-            if cols[i % 4].button(" ", key=f"btn_{pos}_{len(cs['user_clicks'])}"):
-                cs["user_clicks"].append(pos)
-                st.rerun()
+                for i, pos in enumerate(cs["positions"]):
+                    row_idx = i // 4
+                    col_idx = i % 4
+                    
+                    # Render tombol kosong
+                    if rows[row_idx][col_idx].button(" ", key=f"btn_{pos}_{len(cs['user_clicks'])}"):
+                        clicked_pos = pos
 
-        # Logika Pengecekan
-        if len(cs["user_clicks"]) == len(cs["sequence"]):
-            if cs["user_clicks"] == cs["sequence"]:
-                # BENAR
-                cs["results"][f"Level_{cs['level']}"] = 1
-                cs["level"] += 1
-                cs["positions"] = None # Reset posisi untuk level baru
-                cs["attempt"] = 1
-                st.success("Benar! Lanjut ke level berikutnya...")
-                time.sleep(1)
-                st.rerun()
-            else:
-                # SALAH
-                if cs["attempt"] == 1:
-                    cs["attempt"] = 2
-                    cs["user_clicks"] = []
-                    st.warning("Salah urutan. Coba sekali lagi pada level yang sama.")
-                    time.sleep(1.5)
-                    cs["status"] = "blink" # Ulangi blink
+                # --- LOGIC FEEDBACK HIJAU ---
+                if clicked_pos is not None:
+                    # 1. Timpa tombol dengan Gambar Grid HTML (Salah satu kotak Hijau)
+                    # Ini memberi efek visual instan bahwa klik diterima
+                    render_grid_html(cs["positions"], active=clicked_pos, color_mode="green")
+                    
+                    # 2. Pause sebentar agar mata user melihat warna hijau
+                    time.sleep(0.2)
+                    
+                    # 3. Simpan data & Rerun
+                    cs["user_clicks"].append(clicked_pos)
+                    st.rerun()
+
+            # --- LOGIC PENILAIAN ---
+            if len(cs["user_clicks"]) == len(cs["sequence"]):
+                if cs["user_clicks"] == cs["sequence"]:
+                    # BENAR
+                    cs["results"][f"Level_{cs['level']}"] = 1
+                    cs["level"] += 1
+                    cs["positions"] = None 
+                    cs["attempt"] = 1
+                    st.success("Benar! Lanjut...")
+                    time.sleep(1)
                     st.rerun()
                 else:
-                    cs["results"][f"Level_{cs['level']}"] = 0
-                    cs["status"] = "finished"
-                    st.error("Salah dua kali. Tes selesai.")
-                    return True # Mengembalikan True = Selesai
+                    # SALAH
+                    if cs["attempt"] == 1:
+                        cs["attempt"] = 2
+                        cs["user_clicks"] = []
+                        st.warning("Salah urutan. Coba sekali lagi.")
+                        time.sleep(1.5)
+                        cs["status"] = "blink"
+                        st.rerun()
+                    else:
+                        cs["results"][f"Level_{cs['level']}"] = 0
+                        cs["status"] = "finished"
+                        st.error("Tes Selesai.")
+                        return True
 
     return False
 
@@ -327,7 +375,6 @@ def main():
     if finished:
         cs = st.session_state.corsi
         
-        # Hitung level maksimum yang berhasil
         passed_levels = [int(k.split("_")[1]) for k, v in cs["results"].items() if v == 1]
         max_level = max(passed_levels) if passed_levels else 0
 
@@ -350,7 +397,6 @@ def main():
         else:
             st.error(f"Gagal menyimpan data: {info}")
             if st.button("Coba Kirim Lagi"):
-                # Logic retry sederhana
                 ok_retry, info_retry = send_to_webhook(payload)
                 if ok_retry:
                     st.session_state.thankyou = True
